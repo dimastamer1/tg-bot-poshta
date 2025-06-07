@@ -1,0 +1,80 @@
+{
+  "users": {
+    "1064777077": {
+      "paid": false,
+      "emails": [
+        "farina-fit6d@icloud.com",
+        "69_amend.spans@icloud.com",
+        "tome-sighted.1p@icloud.com",
+        "tawny-syntax.6j@icloud.com",
+        "advance-veteran-3v@icloud.com"
+      ],
+      "transactions": {
+        "buy_1064777077_1749318569748": {
+          "invoiceId": 27202820,
+          "quantity": 2,
+          "status": "pending",
+          "timestamp": 1749318569893
+        },
+        "buy_1064777077_1749318571656": {
+          "invoiceId": 27202822,
+          "quantity": 1,
+          "status": "completed",
+          "timestamp": 1749318571809,
+          "emails": [
+            "farina-fit6d@icloud.com"
+          ]
+        },
+        "buy_1064777077_1749318669403": {
+          "invoiceId": 27202905,
+          "quantity": 1,
+          "status": "completed",
+          "timestamp": 1749318669568,
+          "emails": [
+            "69_amend.spans@icloud.com"
+          ]
+        },
+        "buy_1064777077_1749323394433": {
+          "invoiceId": 27207434,
+          "quantity": 1,
+          "status": "completed",
+          "timestamp": 1749323394702,
+          "emails": [
+            "tome-sighted.1p@icloud.com"
+          ]
+        },
+        "buy_1064777077_1749332797976": {
+          "invoiceId": 27215915,
+          "quantity": 1,
+          "status": "completed",
+          "timestamp": 1749332798211,
+          "emails": [
+            "tawny-syntax.6j@icloud.com"
+          ]
+        },
+        "buy_1064777077_1749336716497": {
+          "invoiceId": 27218310,
+          "quantity": 1,
+          "status": "completed",
+          "timestamp": 1749336717117,
+          "emails": [
+            "advance-veteran-3v@icloud.com"
+          ]
+        }
+      }
+    },
+    "5889161403": {
+      "paid": false,
+      "emails": [],
+      "transactions": {
+        "buy_5889161403_1749318554958": {
+          "invoiceId": 27202808,
+          "quantity": 1,
+          "status": "pending",
+          "timestamp": 1749318555165
+        }
+      }
+    }
+  },
+  "emailsPool": []
+}
