@@ -776,4 +776,4 @@ bot.onText(/\/check_user (\d+)/, async (msg, match) => {
     console.error('Ошибка при запуске:', err);
     process.exit(1);
   }
-
+})();
