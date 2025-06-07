@@ -4,11 +4,17 @@ import fs from 'fs/promises';
 import path from 'path';
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
-import config from './config.js';
 import express from 'express';
+import config from './config.js';
 
+// Создаем Express приложение для вебхука
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-const bot = new TelegramBot(config.telegramToken, { polling: true });
+// Инициализация бота
+const bot = new TelegramBot(config.telegramToken, { 
+  polling: false // Отключаем polling для вебхука
+});
 const CRYPTOBOT_API_TOKEN = config.cryptoBotToken;
 
 // Настройки IMAP для iCloud
@@ -20,6 +26,20 @@ const imapConfig = {
   tls: config.imap.tls,
   tlsOptions: { rejectUnauthorized: false }
 };
+
+// Middleware для обработки JSON
+app.use(express.json());
+
+// Эндпоинт для вебхука
+app.post(`/webhook`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+// Health check эндпоинт
+app.get('/', (req, res) => {
+  res.send('UBT TikTok Bot is running!');
+});
 
 // Пути к файлам базы данных
 const dbPath = path.resolve('./db.json');
@@ -732,11 +752,28 @@ bot.onText(/\/check_user (\d+)/, async (msg, match) => {
     transactionsInfo);
 });
 
-
-
-
-// Запуск бота
+// Запуск сервера и бота
 (async () => {
-  await initDatabase();
-  console.log('💎 Бот успешно запущен и готов к работе!');
-})();
+  try {
+    // Инициализация базы данных
+    await initDatabase();
+    
+    // Установка вебхука при запуске на Render
+    if (process.env.RENDER_EXTERNAL_URL) {
+      const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/webhook`;
+      await bot.setWebHook(webhookUrl);
+      console.log(`Webhook установлен: ${webhookUrl}`);
+    } else {
+      console.log('Running in development mode');
+    }
+
+    // Запуск сервера
+    app.listen(PORT, () => {
+      console.log(`Сервер запущен на порту ${PORT}`);
+      console.log('💎 Бот успешно запущен и готов к работе!');
+    });
+  } catch (err) {
+    console.error('Ошибка при запуске:', err);
+    process.exit(1);
+  }
+
