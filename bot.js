@@ -211,7 +211,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) ⭐️`, callback_data: 'emails_category' }],
+        [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) 12+Ч ОТЛЕГА⭐️`, callback_data: 'emails_category' }],
         [{ text: '🛒 МОИ ПОЧТЫ 🛒', callback_data: 'my_purchases' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
