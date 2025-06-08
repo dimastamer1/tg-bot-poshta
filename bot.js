@@ -6,6 +6,18 @@ import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
+import { connect } from './db.js';
+// Добавьте в начало файла (после других импортов)
+import { emails, users } from './db.js';
+
+
+
+// Проверка подключения при старте
+connect().then(() => {
+  console.log('✅ Проверка подключения к MongoDB успешна');
+}).catch(e => {
+  console.error('❌ Ошибка подключения к MongoDB:', e);
+});
 
 // Создаем Express приложение для вебхука
 const app = express();
@@ -694,63 +706,71 @@ bot.onText(/\/add_emails (.+)/, async (msg, match) => {
     return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
   }
 
-  const emails = match[1].split(',').map(e => e.trim()).filter(e => e);
-  const pool = await readEmailsPool();
-  
-  if (!Array.isArray(pool.emails)) {
-    pool.emails = [];
+  try {
+    const emailsCollection = await emails();
+    const newEmails = match[1].split(',').map(e => e.trim()).filter(e => e);
+    
+    const result = await emailsCollection.insertMany(
+      newEmails.map(email => ({ email })),
+      { ordered: false } // Пропускать дубликаты
+    );
+    
+    bot.sendMessage(msg.chat.id, 
+      `✅ Успешно добавлено: ${result.insertedCount} почт\n` +
+      `🚫 Пропущено дубликатов: ${newEmails.length - result.insertedCount}`);
+  } catch (e) {
+    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
   }
-
-  let addedCount = 0;
-  for (const email of emails) {
-    if (!pool.emails.includes(email)) {
-      pool.emails.push(email);
-      addedCount++;
-    }
-  }
-
-  await writeEmailsPool(pool);
-  bot.sendMessage(msg.chat.id, `✅ Добавлено ${addedCount} почт. Всего в пуле: ${pool.emails.length}`);
 });
 
+// Просмотр пула почт
 bot.onText(/\/pool_status/, async (msg) => {
   if (!isAdmin(msg.from.id)) {
     return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
   }
 
-  const pool = await readEmailsPool();
-  bot.sendMessage(msg.chat.id, `📊 В пуле ${pool.emails.length} почт:\n\n${pool.emails.join('\n')}`);
-});
-
-bot.onText(/\/reset_user (\d+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) return;
-  
-  const userId = parseInt(match[1]);
-  const db = await readDB();
-  delete db.users[userId];
-  await writeDB(db);
-  bot.sendMessage(msg.chat.id, `✅ Пользователь ${userId} сброшен`);
-});
-
-bot.onText(/\/check_user (\d+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) return;
-  
-  const userId = parseInt(match[1]);
-  const db = await readDB();
-  const user = db.users[userId] || {};
-  
-  let transactionsInfo = 'Транзакции:\n';
-  if (user.transactions) {
-    for (const [id, t] of Object.entries(user.transactions)) {
-      transactionsInfo += `- ${id}: ${t.status}\n`;
+  try {
+    const emailsCollection = await emails();
+    const allEmails = await emailsCollection.find().limit(50).toArray();
+    
+    if (allEmails.length === 0) {
+      return bot.sendMessage(msg.chat.id, '📭 Пул почт пуст');
     }
+    
+    let message = `📊 Всего почт: ${await emailsCollection.countDocuments()}\n\n`;
+    message += allEmails.map(e => e.email).join('\n');
+    
+    if (allEmails.length >= 50) {
+      message += '\n\n...и другие (показаны первые 50)';
+    }
+    
+    bot.sendMessage(msg.chat.id, message);
+  } catch (e) {
+    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
   }
-  
-  bot.sendMessage(msg.chat.id, 
-    `👤 Пользователь ${userId}\n` +
-    `📧 Почты: ${user.emails?.join(', ') || 'нет'}\n\n` +
-    transactionsInfo);
 });
+
+// Проверка подключения к базе
+bot.onText(/\/db_status/, async (msg) => {
+  if (!isAdmin(msg.from.id)) return;
+  
+  try {
+    const db = await connect();
+    const stats = await db.command({ dbStats: 1 });
+    const emailCount = await (await emails()).countDocuments();
+    
+    bot.sendMessage(msg.chat.id, 
+      `🛠️ <b>Статус базы данных</b>\n\n` +
+      `✅ Подключение активно\n` +
+      `📊 Размер базы: ${(stats.dataSize / 1024).toFixed(2)} KB\n` +
+      `📧 Почтов в пуле: ${emailCount}\n` +
+      `👥 Пользователей: ${await (await users()).countDocuments()}`,
+      { parse_mode: 'HTML' });
+  } catch (e) {
+    bot.sendMessage(msg.chat.id, `❌ Ошибка подключения: ${e.message}`);
+  }
+});
+
 
 // Запуск сервера и бота
 (async () => {
