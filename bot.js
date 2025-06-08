@@ -6,135 +6,6 @@ import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
-import { readEmailsPool, writeEmailsPool, users } from './db.js';
-// Добавьте в начало файла (после других импортов)
-import { emails, users } from './db.js';
-
-// Проверка подключения к базе
-bot.onText(/\/db_status/, async (msg) => {
-  if (!isAdmin(msg.from.id)) return;
-  
-  try {
-    const db = await connect();
-    const stats = await db.command({ dbStats: 1 });
-    const emailCount = await (await emails()).countDocuments();
-    
-    bot.sendMessage(msg.chat.id, 
-      `🛠️ <b>Статус базы данных</b>\n\n` +
-      `✅ Подключение активно\n` +
-      `📊 Размер базы: ${(stats.dataSize / 1024).toFixed(2)} KB\n` +
-      `📧 Почтов в пуле: ${emailCount}\n` +
-      `👥 Пользователей: ${await (await users()).countDocuments()}`,
-      { parse_mode: 'HTML' });
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка подключения: ${e.message}`);
-  }
-});
-
-// Добавление почт
-bot.onText(/\/add_emails (.+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) {
-    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
-  }
-
-  try {
-    const emailsCollection = await emails();
-    const newEmails = match[1].split(',').map(e => e.trim()).filter(e => e);
-    
-    const result = await emailsCollection.insertMany(
-      newEmails.map(email => ({ email })),
-      { ordered: false } // Пропускать дубликаты
-    );
-    
-    bot.sendMessage(msg.chat.id, 
-      `✅ Успешно добавлено: ${result.insertedCount} почт\n` +
-      `🚫 Пропущено дубликатов: ${newEmails.length - result.insertedCount}`);
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
-});
-
-// Просмотр пула почт
-bot.onText(/\/pool_status/, async (msg) => {
-  if (!isAdmin(msg.from.id)) {
-    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
-  }
-
-  try {
-    const emailsCollection = await emails();
-    const allEmails = await emailsCollection.find().limit(50).toArray();
-    
-    if (allEmails.length === 0) {
-      return bot.sendMessage(msg.chat.id, '📭 Пул почт пуст');
-    }
-    
-    let message = `📊 Всего почт: ${await emailsCollection.countDocuments()}\n\n`;
-    message += allEmails.map(e => e.email).join('\n');
-    
-    if (allEmails.length >= 50) {
-      message += '\n\n...и другие (показаны первые 50)';
-    }
-    
-    bot.sendMessage(msg.chat.id, message);
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
-});
-
-// Сброс пользователя
-bot.onText(/\/reset_user (\d+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) return;
-  
-  try {
-    const userId = parseInt(match[1]);
-    const usersCollection = await users();
-    
-    await usersCollection.updateOne(
-      { user_id: userId },
-      { $set: { emails: [], transactions: {} } }
-    );
-    
-    bot.sendMessage(msg.chat.id, `✅ Пользователь ${userId} сброшен`);
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
-});
-
-// Проверка пользователя
-bot.onText(/\/check_user (\d+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) return;
-  
-  try {
-    const userId = parseInt(match[1]);
-    const usersCollection = await users();
-    const user = await usersCollection.findOne({ user_id: userId });
-    
-    if (!user) {
-      return bot.sendMessage(msg.chat.id, `👤 Пользователь ${userId} не найден`);
-    }
-    
-    let message = `👤 <b>Пользователь ${userId}</b>\n\n` +
-                 `📧 Почты: ${user.emails?.join(', ') || 'нет'}\n\n` +
-                 `🔄 Транзакции:\n`;
-    
-    if (user.transactions) {
-      for (const [id, t] of Object.entries(user.transactions)) {
-        message += `- ${id}: ${t.status}\n`;
-      }
-    } else {
-      message += 'Нет транзакций';
-    }
-    
-    bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
-});
-
-async function sendMainMenu(chatId) {
-  const pool = await readEmailsPool();
-  // ... остальной код без изменений
-}
 
 // Создаем Express приложение для вебхука
 const app = express();
@@ -382,6 +253,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
       setTimeout(() => bot.deleteMessage(chatId, msg.message_id), 300);
     });
   }
+
   return bot.sendMessage(chatId, welcomeText, options);
 }
 
@@ -817,6 +689,68 @@ async function initDatabase() {
 }
 
 // Админские команды
+bot.onText(/\/add_emails (.+)/, async (msg, match) => {
+  if (!isAdmin(msg.from.id)) {
+    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
+  }
+
+  const emails = match[1].split(',').map(e => e.trim()).filter(e => e);
+  const pool = await readEmailsPool();
+  
+  if (!Array.isArray(pool.emails)) {
+    pool.emails = [];
+  }
+
+  let addedCount = 0;
+  for (const email of emails) {
+    if (!pool.emails.includes(email)) {
+      pool.emails.push(email);
+      addedCount++;
+    }
+  }
+
+  await writeEmailsPool(pool);
+  bot.sendMessage(msg.chat.id, `✅ Добавлено ${addedCount} почт. Всего в пуле: ${pool.emails.length}`);
+});
+
+bot.onText(/\/pool_status/, async (msg) => {
+  if (!isAdmin(msg.from.id)) {
+    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
+  }
+
+  const pool = await readEmailsPool();
+  bot.sendMessage(msg.chat.id, `📊 В пуле ${pool.emails.length} почт:\n\n${pool.emails.join('\n')}`);
+});
+
+bot.onText(/\/reset_user (\d+)/, async (msg, match) => {
+  if (!isAdmin(msg.from.id)) return;
+  
+  const userId = parseInt(match[1]);
+  const db = await readDB();
+  delete db.users[userId];
+  await writeDB(db);
+  bot.sendMessage(msg.chat.id, `✅ Пользователь ${userId} сброшен`);
+});
+
+bot.onText(/\/check_user (\d+)/, async (msg, match) => {
+  if (!isAdmin(msg.from.id)) return;
+  
+  const userId = parseInt(match[1]);
+  const db = await readDB();
+  const user = db.users[userId] || {};
+  
+  let transactionsInfo = 'Транзакции:\n';
+  if (user.transactions) {
+    for (const [id, t] of Object.entries(user.transactions)) {
+      transactionsInfo += `- ${id}: ${t.status}\n`;
+    }
+  }
+  
+  bot.sendMessage(msg.chat.id, 
+    `👤 Пользователь ${userId}\n` +
+    `📧 Почты: ${user.emails?.join(', ') || 'нет'}\n\n` +
+    transactionsInfo);
+});
 
 // Запуск сервера и бота
 (async () => {
