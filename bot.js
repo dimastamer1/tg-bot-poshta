@@ -224,9 +224,6 @@ async function getLatestCode(targetEmail) {
 }
 
 // Главное меню с инлайн-кнопками
-
-
-// Меню почт iCloud с инлайн-кнопками
 async function sendMainMenu(chatId, deletePrevious = false) {
   const pool = await readEmailsPool();
   const count = pool.emails.length;
@@ -259,6 +256,33 @@ async function sendMainMenu(chatId, deletePrevious = false) {
 
   return bot.sendMessage(chatId, welcomeText, options);
 }
+
+// Меню почт iCloud с инлайн-кнопками
+async function sendEmailsMenu(chatId) {
+  const pool = await readEmailsPool();
+  const count = pool.emails.length;
+  
+  const text = `📧 <b>ПОЧТЫ ICLOUD (${count}шт) 📧</b>\n\n` +
+  `<b>В данном меню вы можете:</b>\n` +
+  `✅ • Покупать почты\n` +
+  `✅ • Получать коды от почт\n` +
+    `🎉 <b>Акция!</b> До 11.06 почты всего по 4 рубля! 😱`;
+    ` <b>Выбирите куда хотите попасть</b>`;
+
+  const options = {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '💰 КУПИТЬ ПОЧТУ 💰', callback_data: 'buy_email' }],
+        [{ text: '🔑 ПОЛУЧИТЬ КОД 🔑', callback_data: 'get_code' }],
+        [{ text: '🔙 Назад 🔙', callback_data: 'back_to_main' }]
+      ]
+    }
+  };
+
+  return bot.sendMessage(chatId, text, options);
+}
+
 // Меню выбора количества почт
 async function sendQuantityMenu(chatId) {
   const pool = await readEmailsPool();
