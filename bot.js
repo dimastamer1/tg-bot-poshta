@@ -258,29 +258,43 @@ async function sendMainMenu(chatId, deletePrevious = false) {
 }
 
 // Меню почт iCloud с инлайн-кнопками
-async function sendEmailsMenu(chatId) {
+async function sendMainMenu(chatId, deletePrevious = false) {
   const pool = await readEmailsPool();
   const count = pool.emails.length;
   
-  const text = `📧 <b>ПОЧТЫ ICLOUD (${count}шт) 📧</b>\n\n` +
-  `<b>В данном меню вы можете:</b>\n` +
-  `✅ • Покупать почты\n` +
-  `✅ • Получать коды от почт\n` +
+  const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для сп"ма Tik Tok!</b>\n\n` +
+    `<b>Тут вы можете:</b>\n` +
+    `• Купить почту по выгодной цене\n` +
+    `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
+    `• Скоро добвим еще разные почты и аккаунты\n` +
+    `• В будущем - получить связку залива за приглашения друзей\n\n` +
+    `⚠️ Бот новый, возможны временные перебои\n\n` +
     `🎉 <b>Акция!</b> До 11.06 почты всего по 4 рубля! 😱`;
-    ` <b>Выбирите куда хотите попасть</b>`;
 
   const options = {
+    caption: welcomeText, // Текст будет под фото
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: '💰 КУПИТЬ ПОЧТУ 💰', callback_data: 'buy_email' }],
-        [{ text: '🔑 ПОЛУЧИТЬ КОД 🔑', callback_data: 'get_code' }],
-        [{ text: '🔙 Назад 🔙', callback_data: 'back_to_main' }]
+        [{ text: `⭐️ ПОЧТЫ ICLOUD (${count}шт) ⭐️`, callback_data: 'emails_category' }],
+        [{ text: '🛒 МОИ ПОЧТЫ 🛒', callback_data: 'my_purchases' }],
+        [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
     }
   };
 
-  return bot.sendMessage(chatId, text, options);
+  if (deletePrevious) {
+    bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
+      setTimeout(() => bot.deleteMessage(chatId, msg.message_id), 300);
+    });
+  }
+
+  // Отправляем фото с текстом и кнопками
+  return bot.sendPhoto(
+    chatId, 
+    'https://i.ibb.co/spcnyqTy/image-3.png', // URL вашего изображения
+    options
+  );
 }
 
 // Меню выбора количества почт
