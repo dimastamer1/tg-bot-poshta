@@ -403,43 +403,55 @@ async function checkPayment(invoiceId) {
 
 // Обработка успешной оплаты с транзакцией
 async function handleSuccessfulPayment(userId, transactionId) {
-  const db = await readDB();
-  const pool = await readEmailsPool();
+  const usersCollection = await users();
+  const emailsCollection = await emails();
   
-  if (!db.users[userId] || !db.users[userId].transactions[transactionId]) {
-    return false;
-  }
+  const transaction = await usersCollection.findOne({ 
+    user_id: userId,
+    [`transactions.${transactionId}`]: { $exists: true }
+  });
+
+  if (!transaction) return false;
+
+  const quantity = transaction.transactions[transactionId].quantity;
   
-  const transaction = db.users[userId].transactions[transactionId];
-  const quantity = transaction.quantity;
+  // Получаем почты для продажи
+  const emailsToSell = await emailsCollection.find().limit(quantity).toArray();
   
-  if (pool.emails.length >= quantity) {
-    const emails = pool.emails.splice(0, quantity);
-    db.users[userId].emails.push(...emails);
-    transaction.status = 'completed';
-    transaction.emails = emails;
-    
-    await writeDB(db);
-    await writeEmailsPool(pool);
-    
-    await bot.sendMessage(userId, 
-      `🎉 <b>Оплата подтверждена!</b>\n\n` +
-      `📧 <b>Ваши почты:</b>\n<code>${emails.join('\n')}</code>\n\n` +
-      `🔑 Для получения кодов нажмите "🔑 ПОЛУЧИТЬ КОД"`, 
-      { parse_mode: 'HTML' });
-      
-    return true;
-  } else {
-    transaction.status = 'failed';
-    await writeDB(db);
+  if (emailsToSell.length < quantity) {
+    await usersCollection.updateOne(
+      { user_id: userId },
+      { $set: { [`transactions.${transactionId}.status`]: 'failed' } }
+    );
     
     await bot.sendMessage(userId, 
-      `❌ <b>Недостаточно почт в пуле</b>\n\n` +
-      `Мы вернем ваши средства. Пожалуйста, обратитесь в поддержку @igor_Potekov`, 
+      `❌ Недостаточно почт в пуле\nОбратитесь в поддержку @igor_Potekov`,
       { parse_mode: 'HTML' });
-      
     return false;
   }
+
+  // Обновляем данные пользователя
+  await usersCollection.updateOne(
+    { user_id: userId },
+    {
+      $push: { emails: { $each: emailsToSell.map(e => e.email) } },
+      $set: { 
+        [`transactions.${transactionId}.status`]: 'completed',
+        [`transactions.${transactionId}.emails`]: emailsToSell.map(e => e.email)
+      }
+    }
+  );
+
+  // Удаляем проданные почты
+  await emailsCollection.deleteMany({
+    email: { $in: emailsToSell.map(e => e.email) }
+  });
+
+  await bot.sendMessage(userId,
+    `🎉 Оплата подтверждена!\nВаши почты:\n${emailsToSell.map(e => e.email).join('\n')}`,
+    { parse_mode: 'HTML' });
+
+  return true;
 }
 
 // Периодическая проверка оплаты с защитой от дублирования
@@ -701,53 +713,37 @@ async function initDatabase() {
 }
 
 // Админские команды
+// Добавление почт
 bot.onText(/\/add_emails (.+)/, async (msg, match) => {
-  if (!isAdmin(msg.from.id)) {
-    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
-  }
+  if (!isAdmin(msg.from.id)) return;
 
-  try {
-    const emailsCollection = await emails();
-    const newEmails = match[1].split(',').map(e => e.trim()).filter(e => e);
-    
-    const result = await emailsCollection.insertMany(
-      newEmails.map(email => ({ email })),
-      { ordered: false } // Пропускать дубликаты
-    );
-    
-    bot.sendMessage(msg.chat.id, 
-      `✅ Успешно добавлено: ${result.insertedCount} почт\n` +
-      `🚫 Пропущено дубликатов: ${newEmails.length - result.insertedCount}`);
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
+  const emailsCollection = await emails();
+  const newEmails = match[1].split(',').map(e => e.trim()).filter(e => e);
+  
+  const result = await emailsCollection.insertMany(
+    newEmails.map(email => ({ email })),
+    { ordered: false }
+  );
+  
+  const count = await emailsCollection.countDocuments();
+  bot.sendMessage(msg.chat.id, 
+    `✅ Добавлено: ${result.insertedCount}\n📊 Всего почт: ${count}`);
 });
 
-// Просмотр пула почт
+// Статус пула
 bot.onText(/\/pool_status/, async (msg) => {
-  if (!isAdmin(msg.from.id)) {
-    return bot.sendMessage(msg.chat.id, '❌ У вас нет прав для этой команды.');
-  }
+  if (!isAdmin(msg.from.id)) return;
 
-  try {
-    const emailsCollection = await emails();
-    const allEmails = await emailsCollection.find().limit(50).toArray();
-    
-    if (allEmails.length === 0) {
-      return bot.sendMessage(msg.chat.id, '📭 Пул почт пуст');
-    }
-    
-    let message = `📊 Всего почт: ${await emailsCollection.countDocuments()}\n\n`;
-    message += allEmails.map(e => e.email).join('\n');
-    
-    if (allEmails.length >= 50) {
-      message += '\n\n...и другие (показаны первые 50)';
-    }
-    
-    bot.sendMessage(msg.chat.id, message);
-  } catch (e) {
-    bot.sendMessage(msg.chat.id, `❌ Ошибка: ${e.message}`);
-  }
+  const emailsCollection = await emails();
+  const count = await emailsCollection.countDocuments();
+  const first50 = await emailsCollection.find().limit(50).toArray();
+  
+  let message = `📊 Всего почт: ${count}\n\n`;
+  message += first50.map(e => e.email).join('\n');
+  
+  if (count > 50) message += '\n\n...и другие (показаны первые 50)';
+  
+  bot.sendMessage(msg.chat.id, message);
 });
 
 // Проверка подключения к базе
