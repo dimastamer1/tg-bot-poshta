@@ -289,7 +289,7 @@ async function sendQuantityMenu(chatId) {
 
 // Меню оплаты
 async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
-  const totalAmount = (0.052 * quantity).toFixed(2);
+  const totalAmount = (0.09 * quantity).toFixed(2);
   
   const text = `💳 <b>Оплата ${quantity} почт(ы)</b>\n\n` +
     `Сумма: <b>${totalAmount} USDT</b>\n\n` +
@@ -312,7 +312,7 @@ async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
 async function createInvoice(userId, quantity) {
   try {
     const transactionId = `buy_${userId}_${Date.now()}`;
-    const amount = 0.052 * quantity;
+    const amount = 0.09* quantity;
     
     const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
       asset: 'USDT',
