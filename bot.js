@@ -717,6 +717,67 @@ bot.onText(/\/db_status/, async (msg) => {
   }
 });
 
+// Улучшенная рассылка с поддержкой фото и текста
+bot.onText(/\/broadcast/, async (msg) => {
+  if (!isAdmin(msg.from.id)) {
+    return bot.sendMessage(msg.chat.id, '❌ Эта команда доступна только администраторам');
+  }
+
+  // Запрашиваем у админа, что рассылать
+  const prompt = await bot.sendMessage(msg.chat.id, '📢 Что вы хотите разослать?\n\nОтправьте мне:\n1. Текст сообщения\n2. Фото с подписью\n3. Видео с подписью', {
+    reply_markup: {
+      force_reply: true
+    }
+  });
+
+  // Ожидаем ответа от админа
+  bot.onReplyToMessage(msg.chat.id, prompt.message_id, async (reply) => {
+    const usersCollection = await users();
+    const allUsers = await usersCollection.find({}).toArray();
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    // Рассылка в зависимости от типа контента
+    if (reply.photo) {
+      // Рассылка фото с подписью
+      const photoId = reply.photo[reply.photo.length - 1].file_id;
+      const caption = reply.caption || '';
+
+      for (const user of allUsers) {
+        try {
+          await bot.sendPhoto(user.user_id, photoId, {
+            caption: `📢 ${caption}`,
+            parse_mode: 'HTML'
+          });
+          successCount++;
+        } catch (e) {
+          failCount++;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } else if (reply.text) {
+      // Рассылка текста
+      for (const user of allUsers) {
+        try {
+          await bot.sendMessage(user.user_id, `📢 ${reply.text}`, {
+            parse_mode: 'HTML'
+          });
+          successCount++;
+        } catch (e) {
+          failCount++;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    await bot.sendMessage(msg.chat.id, 
+      `📊 Рассылка завершена:\n\n` +
+      `✅ Успешно: ${successCount}\n` +
+      `❌ Не удалось: ${failCount}`);
+  });
+});
+
 // Запуск сервера и бота
 (async () => {
   try {
