@@ -422,7 +422,7 @@ async function handleSuccessfulPayment(userId, transactionId) {
     
     await bot.sendMessage(userId, 
       `❌ <b>Недостаточно почт в пуле</b>\n\n` +
-      `Мы вернем ваши средства. Пожалуйста, обратитесь в поддержку @diman_fomo`, 
+      `Мы вернем ваши средства. Пожалуйста, обратитесь в поддержку @igor_Potekov`, 
       { parse_mode: 'HTML' });
       
     return false;
@@ -489,7 +489,7 @@ async function sendSupportMenu(chatId) {
   return bot.sendMessage(chatId, 
     '🛠️ <b>Техническая поддержка</b>\n\n' +
     'По всем вопросам обращайтесь к менеджеру:\n' +
-    '@diman_fomo\n\n' +
+    '@igor_Potekov\n\n' +
     'Мы решим любую вашу проблему!', {
     parse_mode: 'HTML',
     reply_markup: {
