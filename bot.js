@@ -190,6 +190,14 @@ async function getLatestCode(targetEmail) {
 async function sendMainMenu(chatId, deletePrevious = false) {
   const emailsCount = await (await emails()).countDocuments();
   
+  // Сохраняем пользователя в базу при первом запуске
+  const usersCollection = await users();
+  await usersCollection.updateOne(
+    { user_id: chatId },
+    { $setOnInsert: { user_id: chatId, emails: [], first_seen: new Date() } },
+    { upsert: true }
+  );
+
   const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для сп"ма Tik Tok!</b>\n\n` +
     `<b>Тут вы можете:</b>\n` +
     `• Купить почту по выгодной цене\n` +
@@ -216,15 +224,11 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     });
   }
 
-  // Отправляем только фото с текстом (убрали дублирующий sendMessage)
   return bot.sendPhoto(chatId, 'https://i.ibb.co/spcnyqTy/image-3.png', {
     caption: welcomeText,
     parse_mode: 'HTML',
     reply_markup: options.reply_markup
   });
-
-
-  return bot.sendMessage(chatId, welcomeText, options);
 }
 
 // Меню почт iCloud с инлайн-кнопками
@@ -496,6 +500,13 @@ bot.on('callback_query', async (callbackQuery) => {
   const data = callbackQuery.data;
   
   try {
+    // Обновляем информацию о последней активности пользователя
+    const usersCollection = await users();
+    await usersCollection.updateOne(
+      { user_id: chatId },
+      { $set: { last_seen: new Date() } }
+    );
+
     // Главное меню
     if (data === 'back_to_main') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
@@ -657,8 +668,30 @@ bot.on('callback_query', async (callbackQuery) => {
 });
 
 // Команда /start
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
+  
+  // Логируем нового пользователя
+  console.log(`Новый пользователь: ${chatId}`, msg.from);
+  
+  // Сохраняем в базу
+  const usersCollection = await users();
+  await usersCollection.updateOne(
+    { user_id: chatId },
+    { 
+      $setOnInsert: { 
+        user_id: chatId,
+        username: msg.from.username || '',
+        first_name: msg.from.first_name || '',
+        last_name: msg.from.last_name || '',
+        first_seen: new Date(),
+        last_seen: new Date(),
+        emails: []
+      }
+    },
+    { upsert: true }
+  );
+  
   sendMainMenu(chatId);
 });
 
@@ -717,6 +750,40 @@ bot.onText(/\/db_status/, async (msg) => {
   }
 });
 
+// Статистика пользователей
+bot.onText(/\/user_stats/, async (msg) => {
+  if (!isAdmin(msg.from.id)) return;
+  
+  const usersCollection = await users();
+  const totalUsers = await usersCollection.countDocuments();
+  const activeUsers = await usersCollection.countDocuments({
+    last_seen: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+  });
+  
+  bot.sendMessage(msg.chat.id,
+    `📊 <b>Статистика пользователей</b>\n\n` +
+    `👥 Всего пользователей: <b>${totalUsers}</b>\n` +
+    `🟢 Активных за неделю: <b>${activeUsers}</b>\n\n` +
+    `Последние 5 пользователей:`,
+    { parse_mode: 'HTML' });
+  
+  // Показываем последних 5 пользователей
+  const recentUsers = await usersCollection.find()
+    .sort({ first_seen: -1 })
+    .limit(5)
+    .toArray();
+  
+  for (const user of recentUsers) {
+    const userInfo = [
+      `👤 ID: <code>${user.user_id}</code>`,
+      `🆔 @${user.username || 'нет'}`,
+      `📅 Первый визит: ${user.first_seen.toLocaleString()}`,
+      `🔄 Последний визит: ${user.last_seen?.toLocaleString() || 'никогда'}`
+    ].join('\n');
+    
+    await bot.sendMessage(msg.chat.id, userInfo, { parse_mode: 'HTML' });
+  }
+});
 
 // Запуск сервера и бота
 (async () => {
