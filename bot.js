@@ -224,38 +224,7 @@ async function getLatestCode(targetEmail) {
 }
 
 // Главное меню с инлайн-кнопками
-async function sendMainMenu(chatId, deletePrevious = false) {
-  const pool = await readEmailsPool();
-  const count = pool.emails.length;
-  
-  const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для сп"ма Tik Tok!</b>\n\n` +
-    `<b>Тут вы можете:</b>\n` +
-    `• Купить почту по выгодной цене\n` +
-    `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
-    `• Скоро добвим еще разные почты и аккаунты\n` +
-    `• В будущем - получить связку залива за приглашения друзей\n\n` +
-    `⚠️ Бот новый, возможны временные перебои\n\n` +
-    `🎉 <b>Акция!</b> До 11.06 почты всего по 4 рубля! 😱`;
 
-  const options = {
-    parse_mode: 'HTML',
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: `⭐️ ПОЧТЫ ICLOUD (${count}шт) ⭐️`, callback_data: 'emails_category' }],
-        [{ text: '🛒 МОИ ПОЧТЫ 🛒', callback_data: 'my_purchases' }],
-        [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
-      ]
-    }
-  };
-
-  if (deletePrevious) {
-    bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
-      setTimeout(() => bot.deleteMessage(chatId, msg.message_id), 300);
-    });
-  }
-
-  return bot.sendMessage(chatId, welcomeText, options);
-}
 
 // Меню почт iCloud с инлайн-кнопками
 async function sendMainMenu(chatId, deletePrevious = false) {
@@ -266,13 +235,13 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `<b>Тут вы можете:</b>\n` +
     `• Купить почту по выгодной цене\n` +
     `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
-    `• Скоро добвим еще разные почты и аккаунты\n` +
+    `• Скоро добавим еще разные почты и аккаунты\n` +
     `• В будущем - получить связку залива за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
     `🎉 <b>Акция!</b> До 11.06 почты всего по 4 рубля! 😱`;
 
   const options = {
-    caption: welcomeText, // Текст будет под фото
+    caption: welcomeText,
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
@@ -284,17 +253,23 @@ async function sendMainMenu(chatId, deletePrevious = false) {
   };
 
   if (deletePrevious) {
-    bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
+    await bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
       setTimeout(() => bot.deleteMessage(chatId, msg.message_id), 300);
     });
   }
 
-  // Отправляем фото с текстом и кнопками
-  return bot.sendPhoto(
-    chatId, 
-    'https://i.ibb.co/spcnyqTy/image-3.png', // URL вашего изображения
-    options
-  );
+  try {
+    // URL изображения (замените на свое)
+    const photoUrl = 'https://i.ibb.co/spcnyqTy/image-3.png';
+    return await bot.sendPhoto(chatId, photoUrl, options);
+  } catch (e) {
+    console.error('Ошибка отправки фото:', e);
+    // Fallback - отправляем текстовое сообщение если не удалось отправить фото
+    return await bot.sendMessage(chatId, welcomeText, {
+      parse_mode: 'HTML',
+      reply_markup: options.reply_markup
+    });
+  }
 }
 
 // Меню выбора количества почт
