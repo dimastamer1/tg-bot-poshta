@@ -232,15 +232,12 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `<b>Тут вы можете:</b>\n` +
     `• Купить почту по выгодной цене\n` +
     `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
-    `• Скоро добавим еще разные почты и аккаунты\n` +
+    `• Скоро добвим еще разные почты и аккаунты\n` +
     `• В будущем - получить связку залива за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
     `🎉 <b>Акция!</b> До 11.06 почты всего по 4 рубля! 😱`;
 
-  const photoUrl = 'https://i.ibb.co/spcnyqTy/image-3.png';
-  
   const options = {
-    caption: welcomeText,
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
@@ -252,26 +249,12 @@ async function sendMainMenu(chatId, deletePrevious = false) {
   };
 
   if (deletePrevious) {
-    await bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
+    bot.sendMessage(chatId, '⌛ Обновляю меню...').then(msg => {
       setTimeout(() => bot.deleteMessage(chatId, msg.message_id), 300);
     });
   }
-
-  try {
-    // Отправляем фото с подписью и кнопками
-    return await bot.sendPhoto(chatId, photoUrl, options);
-  } catch (e) {
-    console.error('Ошибка отправки фото:', e);
-    // Fallback: если не удалось отправить фото, отправляем текстовое сообщение
-    return await bot.sendMessage(chatId, welcomeText, {
-      parse_mode: 'HTML',
-      reply_markup: options.reply_markup
-    });
-  }
-}
-
   return bot.sendMessage(chatId, welcomeText, options);
-
+}
 
 // Меню почт iCloud с инлайн-кнопками
 async function sendEmailsMenu(chatId) {
