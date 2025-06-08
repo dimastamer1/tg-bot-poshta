@@ -1,16 +1,10 @@
 import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
-import fs from 'fs/promises';
-import path from 'path';
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
-import { connect } from './db.js';
-// Добавьте в начало файла (после других импортов)
-import { emails, users } from './db.js';
-
-
+import { connect, emails, users } from './db.js';
 
 // Проверка подключения при старте
 connect().then(() => {
@@ -53,52 +47,9 @@ app.get('/', (req, res) => {
   res.send('UBT TikTok Bot is running!');
 });
 
-// Пути к файлам базы данных
-const dbPath = path.resolve('./db.json');
-const emailsPoolPath = path.resolve('./emailsPool.json');
-
 // Проверка является ли пользователь админом
 function isAdmin(userId) {
   return userId === config.adminId;
-}
-
-// Функции для работы с базой данных
-async function readDB() {
-  try {
-    const data = await fs.readFile(dbPath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Ошибка чтения DB:', error);
-    return { users: {}, emailsPool: [] };
-  }
-}
-
-async function writeDB(data) {
-  try {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Ошибка записи DB:', error);
-  }
-}
-
-async function readEmailsPool() {
-  try {
-    const data = await fs.readFile(emailsPoolPath, 'utf8');
-    const parsed = JSON.parse(data);
-    return Array.isArray(parsed.emails) ? parsed : { emails: [] };
-  } catch (error) {
-    console.error('Ошибка чтения пула почт:', error);
-    return { emails: [] };
-  }
-}
-
-async function writeEmailsPool(pool) {
-  try {
-    const toSave = Array.isArray(pool.emails) ? pool : { emails: [] };
-    await fs.writeFile(emailsPoolPath, JSON.stringify(toSave, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Ошибка записи пула почт:', error);
-  }
 }
 
 // Улучшенная функция для извлечения кода из текста письма (только TikTok и TikTok Studio)
@@ -237,8 +188,7 @@ async function getLatestCode(targetEmail) {
 
 // Главное меню с инлайн-кнопками
 async function sendMainMenu(chatId, deletePrevious = false) {
-  const pool = await readEmailsPool();
-  const count = pool.emails.length;
+  const emailsCount = await (await emails()).countDocuments();
   
   const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для сп"ма Tik Tok!</b>\n\n` +
     `<b>Тут вы можете:</b>\n` +
@@ -253,7 +203,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: `⭐️ ПОЧТЫ ICLOUD (${count}шт) ⭐️`, callback_data: 'emails_category' }],
+        [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) ⭐️`, callback_data: 'emails_category' }],
         [{ text: '🛒 МОИ ПОЧТЫ 🛒', callback_data: 'my_purchases' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
@@ -271,10 +221,9 @@ async function sendMainMenu(chatId, deletePrevious = false) {
 
 // Меню почт iCloud с инлайн-кнопками
 async function sendEmailsMenu(chatId) {
-  const pool = await readEmailsPool();
-  const count = pool.emails.length;
+  const emailsCount = await (await emails()).countDocuments();
   
-  const text = `📧 <b>ПОЧТЫ ICLOUD (${count}шт) 📧</b>\n\n` +
+  const text = `📧 <b>ПОЧТЫ ICLOUD (${emailsCount}шт) 📧</b>\n\n` +
   `<b>В данном меню вы можете:</b>\n` +
   `✅ • Покупать почты\n` +
   `✅ • Получать коды от почт\n` +
@@ -297,11 +246,11 @@ async function sendEmailsMenu(chatId) {
 
 // Меню выбора количества почт
 async function sendQuantityMenu(chatId) {
-  const pool = await readEmailsPool();
-  const availableCount = Math.min(pool.emails.length, 10);
+  const availableCount = await (await emails()).countDocuments();
+  const maxAvailable = Math.min(availableCount, 10);
   
   const quantityButtons = [];
-  for (let i = 1; i <= availableCount; i++) {
+  for (let i = 1; i <= maxAvailable; i++) {
     quantityButtons.push({ text: `${i}`, callback_data: `quantity_${i}` });
   }
   
@@ -313,7 +262,7 @@ async function sendQuantityMenu(chatId) {
   rows.push([{ text: '🔙 Назад', callback_data: 'back_to_emails_menu' }]);
 
   const text = `📦 <b>Выберите количество почт, которое хотите приобрести</b>\n\n` +
-    `Доступно: <b>${availableCount}</b> почт\n` +
+    `Доступно: <b>${maxAvailable}</b> почт\n` +
     `Цена: <b>4 Рубля</b> за 1 почту`;
 
   const options = {
@@ -368,15 +317,20 @@ async function createInvoice(userId, quantity) {
       }
     });
 
-    const db = await readDB();
-    db.users[userId] = db.users[userId] || { paid: false, emails: [], transactions: {} };
-    db.users[userId].transactions[transactionId] = {
-      invoiceId: response.data.result.invoice_id,
-      quantity: quantity,
-      status: 'pending',
-      timestamp: Date.now()
-    };
-    await writeDB(db);
+    const usersCollection = await users();
+    await usersCollection.updateOne(
+      { user_id: userId },
+      { 
+        $setOnInsert: { user_id: userId, emails: [] },
+        $set: { [`transactions.${transactionId}`]: {
+          invoiceId: response.data.result.invoice_id,
+          quantity: quantity,
+          status: 'pending',
+          timestamp: Date.now()
+        }}
+      },
+      { upsert: true }
+    );
 
     return response.data.result.pay_url;
   } catch (err) {
@@ -406,17 +360,17 @@ async function handleSuccessfulPayment(userId, transactionId) {
   const usersCollection = await users();
   const emailsCollection = await emails();
   
-  const transaction = await usersCollection.findOne({ 
-    user_id: userId,
-    [`transactions.${transactionId}`]: { $exists: true }
-  });
+  const user = await usersCollection.findOne({ user_id: userId });
+  if (!user || !user.transactions || !user.transactions[transactionId]) {
+    return false;
+  }
 
-  if (!transaction) return false;
-
-  const quantity = transaction.transactions[transactionId].quantity;
+  const quantity = user.transactions[transactionId].quantity;
   
   // Получаем почты для продажи
-  const emailsToSell = await emailsCollection.find().limit(quantity).toArray();
+  const emailsToSell = await emailsCollection.aggregate([
+    { $sample: { size: quantity } }
+  ]).toArray();
   
   if (emailsToSell.length < quantity) {
     await usersCollection.updateOne(
@@ -457,20 +411,23 @@ async function handleSuccessfulPayment(userId, transactionId) {
 // Периодическая проверка оплаты с защитой от дублирования
 setInterval(async () => {
   try {
-    const db = await readDB();
-    
-    for (const [userId, userData] of Object.entries(db.users)) {
-      if (userData.transactions) {
-        for (const [transactionId, transaction] of Object.entries(userData.transactions)) {
-          if (transaction.status === 'pending' && transaction.invoiceId) {
-            const invoice = await checkPayment(transaction.invoiceId);
-            
-            if (invoice?.status === 'paid') {
-              await handleSuccessfulPayment(userId, transactionId);
-            } else if (invoice?.status === 'expired') {
-              transaction.status = 'expired';
-              await writeDB(db);
-            }
+    const usersCollection = await users();
+    const usersWithTransactions = await usersCollection.find({
+      "transactions": { $exists: true }
+    }).toArray();
+
+    for (const user of usersWithTransactions) {
+      for (const [transactionId, transaction] of Object.entries(user.transactions)) {
+        if (transaction.status === 'pending' && transaction.invoiceId) {
+          const invoice = await checkPayment(transaction.invoiceId);
+          
+          if (invoice?.status === 'paid') {
+            await handleSuccessfulPayment(user.user_id, transactionId);
+          } else if (invoice?.status === 'expired') {
+            await usersCollection.updateOne(
+              { user_id: user.user_id },
+              { $set: { [`transactions.${transactionId}.status`]: 'expired' } }
+            );
           }
         }
       }
@@ -482,10 +439,10 @@ setInterval(async () => {
 
 // Меню моих покупок
 async function sendMyPurchasesMenu(chatId) {
-  const db = await readDB();
-  const user = db.users[chatId] || { emails: [] };
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
   
-  if (!user.emails || user.emails.length === 0) {
+  if (!user || !user.emails || user.emails.length === 0) {
     return bot.sendMessage(chatId, 
       '❌ У вас пока нет покупок.\n' +
       'Нажмите "📧 ПОЧТЫ ICLOUD" чтобы сделать покупку', {
@@ -551,8 +508,8 @@ bot.on('callback_query', async (callbackQuery) => {
     
     // Купить почту
     if (data === 'buy_email') {
-      const pool = await readEmailsPool();
-      if (!Array.isArray(pool.emails) || pool.emails.length === 0) {
+      const emailsCount = await (await emails()).countDocuments();
+      if (emailsCount === 0) {
         return bot.answerCallbackQuery(callbackQuery.id, {
           text: 'Почты временно закончились. Попробуйте позже.',
           show_alert: true
@@ -588,10 +545,10 @@ bot.on('callback_query', async (callbackQuery) => {
     
     // Получить код
     if (data === 'get_code') {
-      const db = await readDB();
-      const user = db.users[chatId] || { emails: [] };
+      const usersCollection = await users();
+      const user = await usersCollection.findOne({ user_id: chatId });
       
-      if (!user.emails || user.emails.length === 0) {
+      if (!user || !user.emails || user.emails.length === 0) {
         return bot.answerCallbackQuery(callbackQuery.id, {
           text: 'У вас нет купленных почт. Сначала купите почту.',
           show_alert: true
@@ -697,21 +654,6 @@ bot.onText(/\/start/, (msg) => {
   sendMainMenu(chatId);
 });
 
-// Инициализация базы данных при запуске
-async function initDatabase() {
-  try {
-    await fs.access(emailsPoolPath);
-  } catch {
-    await writeEmailsPool({ emails: [] });
-  }
-
-  try {
-    await fs.access(dbPath);
-  } catch {
-    await writeDB({ users: {}, emailsPool: [] });
-  }
-}
-
 // Админские команды
 // Добавление почт
 bot.onText(/\/add_emails (.+)/, async (msg, match) => {
@@ -767,13 +709,9 @@ bot.onText(/\/db_status/, async (msg) => {
   }
 });
 
-
 // Запуск сервера и бота
 (async () => {
   try {
-    // Инициализация базы данных
-    await initDatabase();
-    
     // Установка вебхука при запуске на Render
     if (process.env.RENDER_EXTERNAL_URL) {
       const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/webhook`;
