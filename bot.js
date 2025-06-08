@@ -216,8 +216,8 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     });
   }
 
-  // Отправляем фото с текстом
-  await bot.sendPhoto(chatId, 'https://i.ibb.co/spcnyqTy/image-3.png', {
+  // Отправляем только фото с текстом (убрали дублирующий sendMessage)
+  return bot.sendPhoto(chatId, 'https://i.ibb.co/spcnyqTy/image-3.png', {
     caption: welcomeText,
     parse_mode: 'HTML',
     reply_markup: options.reply_markup
