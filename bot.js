@@ -207,14 +207,14 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `• Скоро добавим еще разные почты и аккаунты\n` +
     `• В будущем - получить связку залива за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
-    `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 5 рублей будут! 😱`;
+    `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱`;
 
   const options = {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
         [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) 12+Ч ОТЛЕГА⭐️`, callback_data: 'emails_category' }],
-        [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт) — 6₽/0.07USDT`, callback_data: 'firstmail_category' }],
+        [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт) 🔥`, callback_data: 'firstmail_category' }],
         [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
@@ -669,8 +669,8 @@ async function sendMyPurchasesMenu(chatId) {
   const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
 
   const buttons = [];
-  if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD', callback_data: 'my_iclouds' }]);
-  if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL', callback_data: 'my_firstmails' }]);
+  if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
+  if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL 📧', callback_data: 'my_firstmails' }]);
   buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
   if (!hasIcloud && !hasFirstmail) {
@@ -679,15 +679,15 @@ async function sendMyPurchasesMenu(chatId) {
       'Нажмите "📧 ПОЧТЫ ICLOUD" или "🔥 FIRSTMAIL" чтобы сделать покупку', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '📧 ПОЧТЫ ICLOUD', callback_data: 'emails_category' }],
-          [{ text: '🔥 FIRSTMAIL', callback_data: 'firstmail_category' }],
+          [{ text: '📧 ПОЧТЫ ICLOUD 📧', callback_data: 'emails_category' }],
+          [{ text: '🔥 FIRSTMAIL 🔥', callback_data: 'firstmail_category' }],
           [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
         ]
       }
     });
   }
 
-  return bot.sendMessage(chatId, '📦 <b>Ваши покупки:</b>', {
+  return bot.sendMessage(chatId, '📦 <b>Ваши покупки:</b> 📦', {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: buttons
@@ -716,7 +716,7 @@ async function sendMyIcloudsMenu(chatId) {
   const buttons = user.emails.map(email => [{ text: email, callback_data: `email_${email}` }]);
   buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
-  return bot.sendMessage(chatId, '📧 <b>Ваши ICLOUD почты:</b>', {
+  return bot.sendMessage(chatId, '📧 <b>Ваши ICLOUD почты:</b>📧', {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: buttons
@@ -735,7 +735,7 @@ async function sendMyFirstmailsMenu(chatId) {
       'Купите их в разделе FIRSTMAIL!', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🔥 FIRSTMAIL', callback_data: 'firstmail_category' }],
+          [{ text: '🔥 FIRSTMAIL 🔥', callback_data: 'firstmail_category' }],
           [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
         ]
       }
@@ -745,7 +745,7 @@ async function sendMyFirstmailsMenu(chatId) {
   const buttons = user.firstmails.map(emailpass => [{ text: emailpass, callback_data: `firstmail_show_${emailpass}` }]);
   buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
-  return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b>', {
+  return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b> 🔥', {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: buttons
@@ -966,7 +966,7 @@ bot.on('callback_query', async (callbackQuery) => {
           await bot.sendMessage(chatId, 
             `❌ <b>Код TikTok не найден</b> для <code>${email}</code>\n\n` +
             `Возможные причины:\n` +
-            `1. Письмо с кодом еще не пришло (попробуйте через 1-2 минуты)\n` +
+            `1. Письмо с кодом еще не пришло (попробуйте через 10-15 секунд)\n` +
             `2. Письмо попало в спам\n` +
             `3. Код уже был использован`, {
             parse_mode: 'HTML',
@@ -1094,7 +1094,7 @@ bot.onText(/\/pool_status/, async (msg) => {
   let message = `📊 Всего почт: ${count}\n\n`;
   message += first50.map(e => e.email).join('\n');
 
-  if (count > 50) message += '\n\n...и другие (показаны первые 50)';
+  if (count > 200) message += '\n\n...и другие (показаны первые 200)';
 
   bot.sendMessage(msg.chat.id, message);
 });
@@ -1109,7 +1109,7 @@ bot.onText(/\/firstmail_status/, async (msg) => {
   let message = `🔥 Всего FIRSTMAIL: ${count}\n\n`;
   message += first50.map(e => `${e.email}:${e.password}`).join('\n');
 
-  if (count > 50) message += '\n\n...и другие (показаны первые 50)';
+  if (count > 200) message += '\n\n...и другие (показаны первые 200)';
 
   bot.sendMessage(msg.chat.id, message);
 });
