@@ -186,7 +186,7 @@ async function getLatestCode(targetEmail) {
   });
 }
 
-// Главное меню с инлайн-кнопками КАТЕГОРИИ теперь есть!
+// Главное меню с инлайн-кнопками
 async function sendMainMenu(chatId, deletePrevious = false) {
   const emailsCount = await (await emails()).countDocuments();
   const firstmailCount = await (await firstmails()).countDocuments();
@@ -213,8 +213,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) 12+Ч ОТЛЕГА⭐️`, callback_data: 'emails_category' }],
-        [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт) 🔥`, callback_data: 'firstmail_category' }],
+        [{ text: `📂 КАТЕГОРИИ 📂`, callback_data: 'categories' }],
         [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
@@ -234,6 +233,28 @@ async function sendMainMenu(chatId, deletePrevious = false) {
   });
 }
 
+// Меню категорий
+async function sendCategoriesMenu(chatId) {
+  const emailsCount = await (await emails()).countDocuments();
+  const firstmailCount = await (await firstmails()).countDocuments();
+  
+  const text = `📂 <b>КАТЕГОРИИ</b>\n\n` +
+    `Выберите нужную категорию:`;
+
+  const options = {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
+        [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
+        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+      ]
+    }
+  };
+
+  return bot.sendMessage(chatId, text, options);
+}
+
 // Меню почт iCloud с инлайн-кнопками
 async function sendEmailsMenu(chatId) {
   const emailsCount = await (await emails()).countDocuments();
@@ -251,7 +272,7 @@ async function sendEmailsMenu(chatId) {
       inline_keyboard: [
         [{ text: '💰 КУПИТЬ ПОЧТУ 💰', callback_data: 'buy_email' }],
         [{ text: '🔑 ПОЛУЧИТЬ КОД 🔑', callback_data: 'get_code' }],
-        [{ text: '🔙 Назад 🔙', callback_data: 'back_to_main' }]
+        [{ text: '🔙 Назад 🔙', callback_data: 'back_to_categories' }]
       ]
     }
   };
@@ -274,7 +295,7 @@ async function sendFirstmailMenu(chatId) {
     reply_markup: {
       inline_keyboard: [
         [{ text: '💰 КУПИТЬ ПОЧТУ FIRSTMAIL 💰', callback_data: 'buy_firstmail' }],
-        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+        [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
       ]
     }
   };
@@ -549,9 +570,19 @@ async function handleSuccessfulPayment(userId, transactionId) {
     email: { $in: emailsToSell.map(e => e.email) }
   });
 
+  // Отправляем сообщение о покупке
   await bot.sendMessage(userId,
-    `🎉 Оплата подтверждена!\nВаши почты:\n${emailsToSell.map(e => e.email).join('\n')}`,
+    `🎉 <b>Спасибо за покупку почты!</b>\n\n` +
+    `Ваши почты указаны ниже:`,
     { parse_mode: 'HTML' });
+
+  // Отправляем каждую почту отдельным сообщением
+  for (const email of emailsToSell) {
+    await bot.sendMessage(userId, email.email);
+  }
+
+  // Перенаправляем в меню получения кодов
+  await sendMyIcloudsMenu(userId);
 
   return true;
 }
@@ -658,7 +689,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('Ошибка при проверке платежей:', err);
   }
-}, 20000); // Проверяем каждые 20 секунд
+}, 10000); // Проверяем каждые 10 секунд (было 20)
 
 // Мои покупки (iCloud + FIRSTMAIL)
 async function sendMyPurchasesMenu(chatId) {
@@ -676,11 +707,10 @@ async function sendMyPurchasesMenu(chatId) {
   if (!hasIcloud && !hasFirstmail) {
     return bot.sendMessage(chatId, 
       '❌ У вас пока нет покупок.\n' +
-      'Нажмите "📧 ПОЧТЫ ICLOUD" или "🔥 FIRSTMAIL" чтобы сделать покупку', {
+      'Нажмите "КАТЕГОРИИ" чтобы сделать покупку', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '📧 ПОЧТЫ ICLOUD 📧', callback_data: 'emails_category' }],
-          [{ text: '🔥 FIRSTMAIL 🔥', callback_data: 'firstmail_category' }],
+          [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
           [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
         ]
       }
@@ -706,7 +736,7 @@ async function sendMyIcloudsMenu(chatId) {
       'Купите их в разделе ICLOUD!', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '📧 ПОЧТЫ ICLOUD', callback_data: 'emails_category' }],
+          [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
           [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
         ]
       }
@@ -735,7 +765,7 @@ async function sendMyFirstmailsMenu(chatId) {
       'Купите их в разделе FIRSTMAIL!', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🔥 FIRSTMAIL 🔥', callback_data: 'firstmail_category' }],
+          [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
           [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
         ]
       }
@@ -784,6 +814,18 @@ bot.on('callback_query', async (callbackQuery) => {
     if (data === 'back_to_main') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendMainMenu(chatId);
+    }
+
+    // Категории
+    if (data === 'categories') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendCategoriesMenu(chatId);
+    }
+
+    // Назад к категориям
+    if (data === 'back_to_categories') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendCategoriesMenu(chatId);
     }
 
     // Категория iCloud
