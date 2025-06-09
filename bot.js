@@ -5,6 +5,7 @@ import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
 import { connect, emails, users, firstmails } from './db.js';
+import puppeteer from 'puppeteer';
 
 // Проверка подключения при старте
 connect().then(() => {
@@ -76,8 +77,61 @@ function getCodeFromText(text, subject) {
   return codeMatch[0];
 }
 
+// Функция для входа в Firstmail и получения кода
+async function getFirstmailCode(email, password) {
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    
+    // Переходим на страницу входа
+    await page.goto('https://firstmail.ltd/ru-RU/webmail/login', { 
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+
+    // Вводим логин и пароль
+    await page.type('#rcmloginuser', email);
+    await page.type('#rcmloginpwd', password);
+    await page.click('#rcmloginsubmit');
+
+    // Ждем загрузки почты
+    await page.waitForSelector('#messagelist', { timeout: 15000 });
+
+    // Ищем письма от TikTok
+    const messages = await page.$$('#messagelist tbody tr');
+    for (const msg of messages) {
+      const subject = await msg.$eval('.subject', el => el.textContent.trim());
+      if (subject.includes('TikTok') || subject.includes('ТикТок')) {
+        await msg.click();
+        await page.waitForSelector('#messagebody', { timeout: 10000 });
+        const body = await page.$eval('#messagebody', el => el.textContent);
+        const code = getCodeFromText(body, subject);
+        if (code) {
+          await browser.close();
+          return code;
+        }
+      }
+    }
+
+    await browser.close();
+    return null;
+  } catch (err) {
+    console.error('Ошибка при работе с Firstmail:', err);
+    if (browser) await browser.close();
+    return null;
+  }
+}
+
 // Улучшенная функция для поиска кода в письмах
-async function getLatestCode(targetEmail) {
+async function getLatestCode(targetEmail, isFirstmail = false, password = '') {
+  if (isFirstmail) {
+    return getFirstmailCode(targetEmail, password);
+  }
+
   return new Promise((resolve, reject) => {
     const imap = new Imap(imapConfig);
     let foundCode = null;
@@ -204,6 +258,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `• Купить почту по выгодной цене\n` +
     `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
     `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
+    `• Получить коды из почт FIRSTMAIL\n` +
     `• Скоро добавим еще разные почты и аккаунты\n` +
     `• В будущем - получить связку залива за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
@@ -286,7 +341,8 @@ async function sendFirstmailMenu(chatId) {
 
   const text = `🔥 <b>ПОЧТЫ FIRSTMAIL (${firstmailCount}шт)</b>\n\n` +
     `<b>В данном меню вы можете:</b>\n` +
-    `✅ • Купить почты FIRSTMAIL для спама\n\n` +
+    `✅ • Купить почты FIRSTMAIL для спама\n` +
+    `✅ • Получать коды из почт FIRSTMAIL\n\n` +
     `Цена: <b>6 рублей</b> или <b>0.08 USDT</b> за 1 почту\n\n` +
     `Выберите действие:`;
 
@@ -295,6 +351,7 @@ async function sendFirstmailMenu(chatId) {
     reply_markup: {
       inline_keyboard: [
         [{ text: '💰 КУПИТЬ ПОЧТУ FIRSTMAIL 💰', callback_data: 'buy_firstmail' }],
+        [{ text: '🔑 ПОЛУЧИТЬ КОД 🔑', callback_data: 'get_firstmail_code' }],
         [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
       ]
     }
@@ -633,9 +690,16 @@ async function handleSuccessfulFirstmailPayment(userId, transactionId) {
     email: { $in: firstmailsToSell.map(e => e.email) }
   });
 
+  // Отправляем сообщение о покупке
   await bot.sendMessage(userId,
-    `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+    `🎉 <b>Спасибо за покупку почты FIRSTMAIL!</b>\n\n` +
+    `Ваши почты указаны ниже:`,
     { parse_mode: 'HTML' });
+
+  // Отправляем каждую почту отдельным сообщением
+  for (const emailpass of firstmailsToSell) {
+    await bot.sendMessage(userId, `${emailpass.email}:${emailpass.password}`);
+  }
 
   return true;
 }
@@ -772,7 +836,10 @@ async function sendMyFirstmailsMenu(chatId) {
     });
   }
 
-  const buttons = user.firstmails.map(emailpass => [{ text: emailpass, callback_data: `firstmail_show_${emailpass}` }]);
+  const buttons = user.firstmails.map(emailpass => [{ 
+    text: emailpass.split(':')[0], 
+    callback_data: `firstmail_email_${emailpass}` 
+  }]);
   buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
   return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b> 🔥', {
@@ -878,6 +945,22 @@ bot.on('callback_query', async (callbackQuery) => {
       return sendFirstmailQuantityMenu(chatId);
     }
 
+    // Получить код из FIRSTMAIL
+    if (data === 'get_firstmail_code') {
+      const usersCollection = await users();
+      const user = await usersCollection.findOne({ user_id: chatId });
+
+      if (!user || !user.firstmails || user.firstmails.length === 0) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+          text: 'У вас нет купленных почт FIRSTMAIL. Сначала купите почту.',
+          show_alert: true
+        });
+      }
+
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendMyFirstmailsMenu(chatId);
+    }
+
     // Выбор количества iCloud
     if (data.startsWith('quantity_')) {
       const quantity = parseInt(data.split('_')[1]);
@@ -952,21 +1035,72 @@ bot.on('callback_query', async (callbackQuery) => {
       return sendMyIcloudsMenu(chatId);
     }
 
-    // Показываем выбранную firstmail
-    if (data.startsWith('firstmail_show_')) {
-      const emailpass = data.replace('firstmail_show_', '');
-      await bot.sendMessage(chatId, 
-        `📧 <b>Ваша почта FIRSTMAIL:</b> <code>${emailpass}</code>\n\n` +
-        `Используйте для ваших целей!`,
-        {
+    // Выбор почты FIRSTMAIL для получения кода
+    if (data.startsWith('firstmail_email_')) {
+      const emailpass = data.replace('firstmail_email_', '');
+      const [email, password] = emailpass.split(':');
+
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: `Ищем код для почты ${email}...`,
+        show_alert: false
+      });
+
+      try {
+        // Показываем сообщение о поиске кода
+        const searchMsg = await bot.sendMessage(chatId, 
+          `🔍 <b>Ищем код TikTok для</b> <code>${email}</code>\n\n` +
+          `Это может занять до 1 минуты...`, {
+          parse_mode: 'HTML'
+        });
+
+        const code = await getLatestCode(email, true, password);
+
+        // Удаляем сообщение о поиске
+        await bot.deleteMessage(chatId, searchMsg.message_id);
+
+        if (code) {
+          await bot.sendMessage(chatId, 
+            `✅ <b>Код TikTok для</b> <code>${email}</code>\n\n` +
+            `🔑 <b>Ваш код:</b> <code>${code}</code>\n\n` +
+            `⚠️ <i>Никому не сообщайте этот код!</i>`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🔙 Назад', callback_data: 'my_firstmails' }]
+              ]
+            }
+          });
+        } else {
+          await bot.sendMessage(chatId, 
+            `❌ <b>Код TikTok не найден</b> для <code>${email}</code>\n\n` +
+            `Возможные причины:\n` +
+            `1. Письмо с кодом еще не пришло (попробуйте через 1-2 минуты)\n` +
+            `2. Письмо попало в спам\n` +
+            `3. Код уже был использован`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🔄 Попробовать снова', callback_data: `firstmail_email_${emailpass}` }],
+                [{ text: '🔙 Назад', callback_data: 'my_firstmails' }]
+              ]
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Ошибка при получении кода:', e);
+        await bot.sendMessage(chatId, 
+         `❌ <b>Ошибка при получении кода</b>\n\n` +
+          `${e.message}\n\n` +
+          `Попробуйте позже или напишите в поддержку`, {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
+              [{ text: '🆘 Поддержка', callback_data: 'support' }],
               [{ text: '🔙 Назад', callback_data: 'my_firstmails' }]
             ]
           }
-        }
-      );
+        });
+      }
       return;
     }
 
