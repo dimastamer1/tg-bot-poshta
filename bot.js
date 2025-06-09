@@ -266,7 +266,7 @@ async function sendFirstmailMenu(chatId) {
   const text = `🔥 <b>ПОЧТЫ FIRSTMAIL (${firstmailCount}шт)</b>\n\n` +
     `<b>В данном меню вы можете:</b>\n` +
     `✅ • Купить почты FIRSTMAIL для спама\n\n` +
-    `Цена: <b>6 рублей</b> или <b>0.07 USDT</b> за 1 почту\n\n` +
+    `Цена: <b>6 рублей</b> или <b>0.08 USDT</b> за 1 почту\n\n` +
     `Выберите действие:`;
 
   const options = {
@@ -331,7 +331,7 @@ async function sendFirstmailQuantityMenu(chatId) {
 
   const text = `📦 <b>Выберите количество почт FIRSTMAIL, которое хотите приобрести</b>\n\n` +
     `Доступно: <b>${maxAvailable}</b> почт\n` +
-    `Цена: <b>6 Рублей</b> или <b>0.07 USDT</b> за 1 почту`;
+    `Цена: <b>6 Рублей</b> или <b>0.08 USDT</b> за 1 почту`;
 
   const options = {
     parse_mode: 'HTML',
@@ -366,7 +366,7 @@ async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
 
 // Меню оплаты FIRSTMAIL
 async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
-  const totalAmount = (0.07 * quantity).toFixed(2);
+  const totalAmount = (0.082 * quantity).toFixed(2);
 
   const text = `💳 <b>Оплата ${quantity} почт(ы) FIRSTMAIL</b>\n\n` +
     `Сумма: <b>${totalAmount} USDT</b>\n\n` +
@@ -432,7 +432,7 @@ async function createInvoice(userId, quantity) {
 async function createFirstmailInvoice(userId, quantity) {
   try {
     const transactionId = `buy_firstmail_${userId}_${Date.now()}`;
-    const amount = 0.07 * quantity;
+    const amount = 0.082 * quantity;
 
     const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
       asset: 'USDT',
