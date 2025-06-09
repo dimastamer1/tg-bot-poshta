@@ -4,7 +4,7 @@ import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
-import { connect, emails, users } from './db.js';
+import { connect, emails, users, firstmails } from './db.js';
 
 // Проверка подключения при старте
 connect().then(() => {
@@ -186,15 +186,16 @@ async function getLatestCode(targetEmail) {
   });
 }
 
-// Главное меню с инлайн-кнопками
+// Главное меню с инлайн-кнопками КАТЕГОРИИ теперь есть!
 async function sendMainMenu(chatId, deletePrevious = false) {
   const emailsCount = await (await emails()).countDocuments();
-  
+  const firstmailCount = await (await firstmails()).countDocuments();
+
   // Сохраняем пользователя в базу при первом запуске
   const usersCollection = await users();
   await usersCollection.updateOne(
     { user_id: chatId },
-    { $setOnInsert: { user_id: chatId, emails: [], first_seen: new Date() } },
+    { $setOnInsert: { user_id: chatId, emails: [], firstmails: [], first_seen: new Date() } },
     { upsert: true }
   );
 
@@ -202,7 +203,8 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `<b>Тут вы можете:</b>\n` +
     `• Купить почту по выгодной цене\n` +
     `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
-    `• Скоро добвим еще разные почты и аккаунты\n` +
+    `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
+    `• Скоро добавим еще разные почты и аккаунты\n` +
     `• В будущем - получить связку залива за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
     `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 5 рублей будут! 😱`;
@@ -212,7 +214,8 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     reply_markup: {
       inline_keyboard: [
         [{ text: `⭐️ ПОЧТЫ ICLOUD (${emailsCount}шт) 12+Ч ОТЛЕГА⭐️`, callback_data: 'emails_category' }],
-        [{ text: '🛒 МОИ ПОЧТЫ 🛒', callback_data: 'my_purchases' }],
+        [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт) — 6₽/0.07USDT`, callback_data: 'firstmail_category' }],
+        [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
     }
@@ -239,8 +242,8 @@ async function sendEmailsMenu(chatId) {
   `<b>В данном меню вы можете:</b>\n` +
   `✅ • Покупать почты\n` +
   `✅ • Получать коды от почт\n` +
-    `🎉 <b>Акция!</b> До 11.06 почты всего по 7 рубля! 😱`;
-    ` <b>Выбирите куда хотите попасть</b>`;
+    `🎉 <b>Акция!</b> До 11.06 почты всего по 7 рубля! 😱\n` +
+    `<b>Выберите куда хотите попасть</b>`;
 
   const options = {
     parse_mode: 'HTML',
@@ -256,7 +259,30 @@ async function sendEmailsMenu(chatId) {
   return bot.sendMessage(chatId, text, options);
 }
 
-// Меню выбора количества почт
+// Меню FIRSTMAIL с инлайн-кнопками
+async function sendFirstmailMenu(chatId) {
+  const firstmailCount = await (await firstmails()).countDocuments();
+
+  const text = `🔥 <b>ПОЧТЫ FIRSTMAIL (${firstmailCount}шт)</b>\n\n` +
+    `<b>В данном меню вы можете:</b>\n` +
+    `✅ • Купить почты FIRSTMAIL для спама\n\n` +
+    `Цена: <b>6 рублей</b> или <b>0.07 USDT</b> за 1 почту\n\n` +
+    `Выберите действие:`;
+
+  const options = {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '💰 КУПИТЬ ПОЧТУ FIRSTMAIL 💰', callback_data: 'buy_firstmail' }],
+        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+      ]
+    }
+  };
+
+  return bot.sendMessage(chatId, text, options);
+}
+
+// Меню выбора количества почт iCloud
 async function sendQuantityMenu(chatId) {
   const availableCount = await (await emails()).countDocuments();
   const maxAvailable = Math.min(availableCount, 10);
@@ -287,7 +313,37 @@ async function sendQuantityMenu(chatId) {
   return bot.sendMessage(chatId, text, options);
 }
 
-// Меню оплаты
+// Меню выбора количества почт FIRSTMAIL
+async function sendFirstmailQuantityMenu(chatId) {
+  const availableCount = await (await firstmails()).countDocuments();
+  const maxAvailable = Math.min(availableCount, 10);
+
+  const quantityButtons = [];
+  for (let i = 1; i <= maxAvailable; i++) {
+    quantityButtons.push({ text: `${i}`, callback_data: `firstmail_quantity_${i}` });
+  }
+
+  const rows = [];
+  for (let i = 0; i < quantityButtons.length; i += 5) {
+    rows.push(quantityButtons.slice(i, i + 5));
+  }
+  rows.push([{ text: '🔙 Назад', callback_data: 'firstmail_category' }]);
+
+  const text = `📦 <b>Выберите количество почт FIRSTMAIL, которое хотите приобрести</b>\n\n` +
+    `Доступно: <b>${maxAvailable}</b> почт\n` +
+    `Цена: <b>6 Рублей</b> или <b>0.07 USDT</b> за 1 почту`;
+
+  const options = {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: rows
+    }
+  };
+
+  return bot.sendMessage(chatId, text, options);
+}
+
+// Меню оплаты iCloud
 async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
   const totalAmount = (0.09 * quantity).toFixed(2);
   
@@ -308,7 +364,28 @@ async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
   return bot.sendMessage(chatId, text, options);
 }
 
-// Создание инвойса с транзакцией
+// Меню оплаты FIRSTMAIL
+async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
+  const totalAmount = (0.07 * quantity).toFixed(2);
+
+  const text = `💳 <b>Оплата ${quantity} почт(ы) FIRSTMAIL</b>\n\n` +
+    `Сумма: <b>${totalAmount} USDT</b>\n\n` +
+    `Нажмите кнопку для оплаты:`;
+
+  const options = {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
+        [{ text: '🔙 Назад', callback_data: 'back_to_firstmail_quantity_menu' }]
+      ]
+    }
+  };
+
+  return bot.sendMessage(chatId, text, options);
+}
+
+// Создание инвойса с транзакцией iCloud
 async function createInvoice(userId, quantity) {
   try {
     const transactionId = `buy_${userId}_${Date.now()}`;
@@ -351,7 +428,50 @@ async function createInvoice(userId, quantity) {
   }
 }
 
-// Проверка оплаты с обработкой транзакции
+// Создание инвойса для FIRSTMAIL
+async function createFirstmailInvoice(userId, quantity) {
+  try {
+    const transactionId = `buy_firstmail_${userId}_${Date.now()}`;
+    const amount = 0.07 * quantity;
+
+    const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
+      asset: 'USDT',
+      amount: amount,
+      description: `Покупка ${quantity} почт FIRSTMAIL`,
+      hidden_message: 'Спасибо за покупку!',
+      paid_btn_name: 'openBot',
+      paid_btn_url: 'https://t.me/ubtshope_bot',
+      payload: transactionId
+    }, {
+      headers: {
+        'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const usersCollection = await users();
+    await usersCollection.updateOne(
+      { user_id: userId },
+      { 
+        $setOnInsert: { user_id: userId, firstmails: [] },
+        $set: { [`firstmail_transactions.${transactionId}`]: {
+          invoiceId: response.data.result.invoice_id,
+          quantity: quantity,
+          status: 'pending',
+          timestamp: Date.now()
+        }}
+      },
+      { upsert: true }
+    );
+
+    return response.data.result.pay_url;
+  } catch (err) {
+    console.error('Ошибка при создании инвойса FIRSTMAIL:', err.response?.data || err.message);
+    return null;
+  }
+}
+
+// Проверка оплаты iCloud
 async function checkPayment(invoiceId) {
   try {
     const response = await axios.get(`https://pay.crypt.bot/api/getInvoices?invoice_ids=${invoiceId}`, {
@@ -367,7 +487,23 @@ async function checkPayment(invoiceId) {
   }
 }
 
-// Обработка успешной оплаты с транзакцией
+// Проверка оплаты firstmail
+async function checkFirstmailPayment(invoiceId) {
+  try {
+    const response = await axios.get(`https://pay.crypt.bot/api/getInvoices?invoice_ids=${invoiceId}`, {
+      headers: {
+        'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN
+      }
+    });
+
+    return response.data.result.items[0];
+  } catch (err) {
+    console.error('Ошибка при проверке оплаты FIRSTMAIL:', err);
+    return null;
+  }
+}
+
+// Обработка успешной оплаты с транзакцией iCloud
 async function handleSuccessfulPayment(userId, transactionId) {
   const usersCollection = await users();
   const emailsCollection = await emails();
@@ -420,7 +556,60 @@ async function handleSuccessfulPayment(userId, transactionId) {
   return true;
 }
 
-// Периодическая проверка оплаты с защитой от дублирования
+// Обработка успешной оплаты firstmail
+async function handleSuccessfulFirstmailPayment(userId, transactionId) {
+  const usersCollection = await users();
+  const firstmailsCollection = await firstmails();
+
+  const user = await usersCollection.findOne({ user_id: userId });
+  if (!user || !user.firstmail_transactions || !user.firstmail_transactions[transactionId]) {
+    return false;
+  }
+
+  const quantity = user.firstmail_transactions[transactionId].quantity;
+
+  // Получаем firstmail для продажи
+  const firstmailsToSell = await firstmailsCollection.aggregate([
+    { $sample: { size: quantity } }
+  ]).toArray();
+
+  if (firstmailsToSell.length < quantity) {
+    await usersCollection.updateOne(
+      { user_id: userId },
+      { $set: { [`firstmail_transactions.${transactionId}.status`]: 'failed' } }
+    );
+
+    await bot.sendMessage(userId, 
+      `❌ Недостаточно почт FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
+      { parse_mode: 'HTML' });
+    return false;
+  }
+
+  // Обновляем данные пользователя
+  await usersCollection.updateOne(
+    { user_id: userId },
+    {
+      $push: { firstmails: { $each: firstmailsToSell.map(e => `${e.email}:${e.password}`) } },
+      $set: { 
+        [`firstmail_transactions.${transactionId}.status`]: 'completed',
+        [`firstmail_transactions.${transactionId}.emails`]: firstmailsToSell.map(e => `${e.email}:${e.password}`)
+      }
+    }
+  );
+
+  // Удаляем проданные почты
+  await firstmailsCollection.deleteMany({
+    email: { $in: firstmailsToSell.map(e => e.email) }
+  });
+
+  await bot.sendMessage(userId,
+    `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+    { parse_mode: 'HTML' });
+
+  return true;
+}
+
+// Периодическая проверка оплаты с защитой от дублирования iCloud/FIRSTMAIL
 setInterval(async () => {
   try {
     const usersCollection = await users();
@@ -444,20 +633,77 @@ setInterval(async () => {
         }
       }
     }
+
+    // FIRSTMAIL
+    const usersWithFirstmail = await usersCollection.find({
+      "firstmail_transactions": { $exists: true }
+    }).toArray();
+
+    for (const user of usersWithFirstmail) {
+      for (const [transactionId, transaction] of Object.entries(user.firstmail_transactions)) {
+        if (transaction.status === 'pending' && transaction.invoiceId) {
+          const invoice = await checkFirstmailPayment(transaction.invoiceId);
+
+          if (invoice?.status === 'paid') {
+            await handleSuccessfulFirstmailPayment(user.user_id, transactionId);
+          } else if (invoice?.status === 'expired') {
+            await usersCollection.updateOne(
+              { user_id: user.user_id },
+              { $set: { [`firstmail_transactions.${transactionId}.status`]: 'expired' } }
+            );
+          }
+        }
+      }
+    }
   } catch (err) {
     console.error('Ошибка при проверке платежей:', err);
   }
 }, 20000); // Проверяем каждые 20 секунд
 
-// Меню моих покупок
+// Мои покупки (iCloud + FIRSTMAIL)
 async function sendMyPurchasesMenu(chatId) {
   const usersCollection = await users();
   const user = await usersCollection.findOne({ user_id: chatId });
-  
-  if (!user || !user.emails || user.emails.length === 0) {
+
+  const hasIcloud = user && user.emails && user.emails.length > 0;
+  const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
+
+  const buttons = [];
+  if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD', callback_data: 'my_iclouds' }]);
+  if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL', callback_data: 'my_firstmails' }]);
+  buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+  if (!hasIcloud && !hasFirstmail) {
     return bot.sendMessage(chatId, 
       '❌ У вас пока нет покупок.\n' +
-      'Нажмите "📧 ПОЧТЫ ICLOUD" чтобы сделать покупку', {
+      'Нажмите "📧 ПОЧТЫ ICLOUD" или "🔥 FIRSTMAIL" чтобы сделать покупку', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📧 ПОЧТЫ ICLOUD', callback_data: 'emails_category' }],
+          [{ text: '🔥 FIRSTMAIL', callback_data: 'firstmail_category' }],
+          [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+        ]
+      }
+    });
+  }
+
+  return bot.sendMessage(chatId, '📦 <b>Ваши покупки:</b>', {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: buttons
+    }
+  });
+}
+
+// Мои ICLOUD почты (и возможность получить код)
+async function sendMyIcloudsMenu(chatId) {
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
+
+  if (!user || !user.emails || user.emails.length === 0) {
+    return bot.sendMessage(chatId, 
+      '❌ У вас пока нет купленных ICLOUD.\n' +
+      'Купите их в разделе ICLOUD!', {
       reply_markup: {
         inline_keyboard: [
           [{ text: '📧 ПОЧТЫ ICLOUD', callback_data: 'emails_category' }],
@@ -466,11 +712,40 @@ async function sendMyPurchasesMenu(chatId) {
       }
     });
   }
-  
+
   const buttons = user.emails.map(email => [{ text: email, callback_data: `email_${email}` }]);
   buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
-  
-  return bot.sendMessage(chatId, '📦 <b>Ваши покупки:</b>', {
+
+  return bot.sendMessage(chatId, '📧 <b>Ваши ICLOUD почты:</b>', {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: buttons
+    }
+  });
+}
+
+// Мои FIRSTMAIL почты
+async function sendMyFirstmailsMenu(chatId) {
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
+
+  if (!user || !user.firstmails || user.firstmails.length === 0) {
+    return bot.sendMessage(chatId, 
+      '❌ У вас пока нет фирстмаилов.\n' +
+      'Купите их в разделе FIRSTMAIL!', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔥 FIRSTMAIL', callback_data: 'firstmail_category' }],
+          [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+        ]
+      }
+    });
+  }
+
+  const buttons = user.firstmails.map(emailpass => [{ text: emailpass, callback_data: `firstmail_show_${emailpass}` }]);
+  buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+  return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b>', {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: buttons
@@ -498,34 +773,44 @@ async function sendSupportMenu(chatId) {
 bot.on('callback_query', async (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
-  
+
   try {
-    // Обновляем информацию о последней активности пользователя
     const usersCollection = await users();
     await usersCollection.updateOne(
       { user_id: chatId },
       { $set: { last_seen: new Date() } }
     );
 
-    // Главное меню
     if (data === 'back_to_main') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendMainMenu(chatId);
     }
-    
-    // Категория почт
+
+    // Категория iCloud
     if (data === 'emails_category') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendEmailsMenu(chatId);
     }
-    
+
+    // Категория FIRSTMAIL
+    if (data === 'firstmail_category') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendFirstmailMenu(chatId);
+    }
+
     // Назад к меню почт
     if (data === 'back_to_emails_menu') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendEmailsMenu(chatId);
     }
-    
-    // Купить почту
+
+    // Назад к меню firstmail
+    if (data === 'back_to_firstmail_menu') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendFirstmailMenu(chatId);
+    }
+
+    // Купить почту iCloud
     if (data === 'buy_email') {
       const emailsCount = await (await emails()).countDocuments();
       if (emailsCount === 0) {
@@ -534,59 +819,124 @@ bot.on('callback_query', async (callbackQuery) => {
           show_alert: true
         });
       }
-      
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendQuantityMenu(chatId);
     }
-    
-    // Выбор количества
+
+    // Купить firstmail
+    if (data === 'buy_firstmail') {
+      const firstmailCount = await (await firstmails()).countDocuments();
+      if (firstmailCount === 0) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+          text: 'FIRSTMAIL почты временно закончились. Попробуйте позже.',
+          show_alert: true
+        });
+      }
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendFirstmailQuantityMenu(chatId);
+    }
+
+    // Выбор количества iCloud
     if (data.startsWith('quantity_')) {
       const quantity = parseInt(data.split('_')[1]);
       const invoiceUrl = await createInvoice(chatId, quantity);
-      
+
       if (!invoiceUrl) {
         return bot.answerCallbackQuery(callbackQuery.id, {
           text: 'Ошибка при создании платежа. Попробуйте позже.',
           show_alert: true
         });
       }
-      
+
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       await sendPaymentMenu(chatId, invoiceUrl, quantity);
       return bot.answerCallbackQuery(callbackQuery.id);
     }
-    
-    // Назад к выбору количества
+
+    // Выбор количества firstmail
+    if (data.startsWith('firstmail_quantity_')) {
+      const quantity = parseInt(data.split('_')[2]);
+      const invoiceUrl = await createFirstmailInvoice(chatId, quantity);
+
+      if (!invoiceUrl) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+          text: 'Ошибка при создании платежа. Попробуйте позже.',
+          show_alert: true
+        });
+      }
+
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      await sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity);
+      return bot.answerCallbackQuery(callbackQuery.id);
+    }
+
+    // Назад к выбору количества iCloud
     if (data === 'back_to_quantity_menu') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendQuantityMenu(chatId);
     }
-    
-    // Получить код
+
+    // Назад к выбору количества firstmail
+    if (data === 'back_to_firstmail_quantity_menu') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendFirstmailQuantityMenu(chatId);
+    }
+
+    // Получить код ICLOUD
     if (data === 'get_code') {
       const usersCollection = await users();
       const user = await usersCollection.findOne({ user_id: chatId });
-      
+
       if (!user || !user.emails || user.emails.length === 0) {
         return bot.answerCallbackQuery(callbackQuery.id, {
           text: 'У вас нет купленных почт. Сначала купите почту.',
           show_alert: true
         });
       }
-      
+
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
-      return sendMyPurchasesMenu(chatId);
+      return sendMyIcloudsMenu(chatId);
     }
-    
+
+    // Мои firstmail
+    if (data === 'my_firstmails') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendMyFirstmailsMenu(chatId);
+    }
+
+    // Мои icloud
+    if (data === 'my_iclouds') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendMyIcloudsMenu(chatId);
+    }
+
+    // Показываем выбранную firstmail
+    if (data.startsWith('firstmail_show_')) {
+      const emailpass = data.replace('firstmail_show_', '');
+      await bot.sendMessage(chatId, 
+        `📧 <b>Ваша почта FIRSTMAIL:</b> <code>${emailpass}</code>\n\n` +
+        `Используйте для ваших целей!`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🔙 Назад', callback_data: 'my_firstmails' }]
+            ]
+          }
+        }
+      );
+      return;
+    }
+
     // Выбор почты для получения кода
     if (data.startsWith('email_')) {
       const email = data.replace('email_', '');
-      
+
       await bot.answerCallbackQuery(callbackQuery.id, {
         text: `Ищем код для почты ${email}...`,
         show_alert: false
       });
-      
+
       try {
         // Показываем сообщение о поиске кода
         const searchMsg = await bot.sendMessage(chatId, 
@@ -594,12 +944,12 @@ bot.on('callback_query', async (callbackQuery) => {
           `Это может занять до 30 секунд...`, {
           parse_mode: 'HTML'
         });
-        
+
         const code = await getLatestCode(email);
-        
+
         // Удаляем сообщение о поиске
         await bot.deleteMessage(chatId, searchMsg.message_id);
-        
+
         if (code) {
           await bot.sendMessage(chatId, 
             `✅ <b>Код TikTok для</b> <code>${email}</code>\n\n` +
@@ -645,19 +995,19 @@ bot.on('callback_query', async (callbackQuery) => {
       }
       return;
     }
-    
+
     // Мои покупки
     if (data === 'my_purchases') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendMyPurchasesMenu(chatId);
-    } 
-    
+    }
+
     // Поддержка
     if (data === 'support') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendSupportMenu(chatId);
     }
-    
+
   } catch (err) {
     console.error('Ошибка в обработчике callback:', err);
     bot.answerCallbackQuery(callbackQuery.id, {
@@ -670,10 +1020,10 @@ bot.on('callback_query', async (callbackQuery) => {
 // Команда /start
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  
+
   // Логируем нового пользователя
   console.log(`Новый пользователь: ${chatId}`, msg.from);
-  
+
   // Сохраняем в базу
   const usersCollection = await users();
   await usersCollection.updateOne(
@@ -686,63 +1036,100 @@ bot.onText(/\/start/, async (msg) => {
         last_name: msg.from.last_name || '',
         first_seen: new Date(),
         last_seen: new Date(),
-        emails: []
+        emails: [],
+        firstmails: []
       }
     },
     { upsert: true }
   );
-  
+
   sendMainMenu(chatId);
 });
 
 // Админские команды
-// Добавление почт
+// Добавление почт iCloud
 bot.onText(/\/add_emails (.+)/, async (msg, match) => {
   if (!isAdmin(msg.from.id)) return;
 
   const emailsCollection = await emails();
   const newEmails = match[1].split(',').map(e => e.trim()).filter(e => e);
-  
+
   const result = await emailsCollection.insertMany(
     newEmails.map(email => ({ email })),
     { ordered: false }
   );
-  
+
   const count = await emailsCollection.countDocuments();
   bot.sendMessage(msg.chat.id, 
     `✅ Добавлено: ${result.insertedCount}\n📊 Всего почт: ${count}`);
 });
 
-// Статус пула
+// Добавление почт FIRSTMAIL
+bot.onText(/\/add_first (.+)/, async (msg, match) => {
+  if (!isAdmin(msg.from.id)) return;
+
+  const firstmailsCollection = await firstmails();
+  const newFirstmails = match[1].split(',').map(e => e.trim()).filter(e => e);
+
+  // Для фирстмаил почт необходим формат типа "email:password"
+  const toInsert = newFirstmails.map(str => {
+    const [email, password] = str.split(':');
+    return { email: email.trim(), password: (password || '').trim() };
+  });
+
+  const result = await firstmailsCollection.insertMany(toInsert, { ordered: false });
+  const count = await firstmailsCollection.countDocuments();
+  bot.sendMessage(msg.chat.id, 
+    `✅ Добавлено: ${result.insertedCount}\n🔥 Всего FIRSTMAIL: ${count}`);
+});
+
+// Статус пула iCloud
 bot.onText(/\/pool_status/, async (msg) => {
   if (!isAdmin(msg.from.id)) return;
 
   const emailsCollection = await emails();
   const count = await emailsCollection.countDocuments();
   const first50 = await emailsCollection.find().limit(50).toArray();
-  
+
   let message = `📊 Всего почт: ${count}\n\n`;
   message += first50.map(e => e.email).join('\n');
-  
+
   if (count > 50) message += '\n\n...и другие (показаны первые 50)';
-  
+
+  bot.sendMessage(msg.chat.id, message);
+});
+// Статус пула FIRSTMAIL
+bot.onText(/\/firstmail_status/, async (msg) => {
+  if (!isAdmin(msg.from.id)) return;
+
+  const firstmailsCollection = await firstmails();
+  const count = await firstmailsCollection.countDocuments();
+  const first50 = await firstmailsCollection.find().limit(50).toArray();
+
+  let message = `🔥 Всего FIRSTMAIL: ${count}\n\n`;
+  message += first50.map(e => `${e.email}:${e.password}`).join('\n');
+
+  if (count > 50) message += '\n\n...и другие (показаны первые 50)';
+
   bot.sendMessage(msg.chat.id, message);
 });
 
 // Проверка подключения к базе
 bot.onText(/\/db_status/, async (msg) => {
   if (!isAdmin(msg.from.id)) return;
-  
+
   try {
     const db = await connect();
     const stats = await db.command({ dbStats: 1 });
     const emailCount = await (await emails()).countDocuments();
-    
+    const firstmailCount = await (await firstmails()).countDocuments();
+
     bot.sendMessage(msg.chat.id, 
       `🛠️ <b>Статус базы данных</b>\n\n` +
       `✅ Подключение активно\n` +
       `📊 Размер базы: ${(stats.dataSize / 1024).toFixed(2)} KB\n` +
       `📧 Почтов в пуле: ${emailCount}\n` +
+      `🔥 FIRSTMAIL в пуле: ${firstmailCount}\n` +
       `👥 Пользователей: ${await (await users()).countDocuments()}`,
       { parse_mode: 'HTML' });
   } catch (e) {
@@ -753,26 +1140,26 @@ bot.onText(/\/db_status/, async (msg) => {
 // Статистика пользователей
 bot.onText(/\/user_stats/, async (msg) => {
   if (!isAdmin(msg.from.id)) return;
-  
+
   const usersCollection = await users();
   const totalUsers = await usersCollection.countDocuments();
   const activeUsers = await usersCollection.countDocuments({
     last_seen: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
   });
-  
+
   bot.sendMessage(msg.chat.id,
     `📊 <b>Статистика пользователей</b>\n\n` +
     `👥 Всего пользователей: <b>${totalUsers}</b>\n` +
     `🟢 Активных за неделю: <b>${activeUsers}</b>\n\n` +
     `Последние 5 пользователей:`,
     { parse_mode: 'HTML' });
-  
+
   // Показываем последних 5 пользователей
   const recentUsers = await usersCollection.find()
     .sort({ first_seen: -1 })
     .limit(5)
     .toArray();
-  
+
   for (const user of recentUsers) {
     const userInfo = [
       `👤 ID: <code>${user.user_id}</code>`,
@@ -780,7 +1167,7 @@ bot.onText(/\/user_stats/, async (msg) => {
       `📅 Первый визит: ${user.first_seen.toLocaleString()}`,
       `🔄 Последний визит: ${user.last_seen?.toLocaleString() || 'никогда'}`
     ].join('\n');
-    
+
     await bot.sendMessage(msg.chat.id, userInfo, { parse_mode: 'HTML' });
   }
 });
@@ -802,7 +1189,7 @@ bot.onText(/\/broadcast/, async (msg) => {
   bot.onReplyToMessage(msg.chat.id, prompt.message_id, async (reply) => {
     const usersCollection = await users();
     const allUsers = await usersCollection.find({}).toArray();
-    
+
     let successCount = 0;
     let failCount = 0;
     const startTime = Date.now();
@@ -880,7 +1267,7 @@ bot.onText(/\/broadcast_text (.+)/, async (msg, match) => {
   const text = match[1];
   const usersCollection = await users();
   const allUsers = await usersCollection.find({}).toArray();
-  
+
   let successCount = 0;
   let failCount = 0;
   const startTime = Date.now();
