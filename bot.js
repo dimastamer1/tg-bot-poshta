@@ -322,10 +322,10 @@ async function sendMainMenu(chatId, deletePrevious = false, msg = null) { // Add
         `• Купить почту по выгодной цене\n` +
         `• Получить код почты TikTok (ТОЛЬКО ICLOUD, и только те, которые куплены у нас)\n` +
         `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
-        `• Купить почты USA/UKR FIRSTMAIL отлега (выдается как email:password)\n` +
+        `• Купить аккаунты отлега 48+Ч USA/UKR FIRSTMAIL отлега (выдается как email:password:username:passwordacc)\n` +
         `• Скоро добавим еще разные почты и аккаунты\n` +
         `⚠️ Бот новый, возможны временные перебои\n\n` +
-        `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱` + discountText;
+        `🎉 <b>ЧАСТО СКИДКИ, БОНУСЫ</b> часто связки, инфо поводы😱` + discountText;
 
     const options = {
         parse_mode: 'HTML',
@@ -334,7 +334,7 @@ async function sendMainMenu(chatId, deletePrevious = false, msg = null) { // Add
                 [{ text: `📂 КАТЕГОРИИ 📂`, callback_data: 'categories' }],
                 [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
                 [{ text: '🔗 РЕФЕРАЛКА 🔗', callback_data: 'referral' }],
-                [{ text: '🎁 СВЯЗКА 🇺🇦 🎁', callback_data: 'get_uk_bundle' }],
+                [{ text: '🇺🇦 СВЯЗКА 🇺🇦 ', callback_data: 'get_uk_bundle' }],
                 [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
             ]
         }
@@ -414,6 +414,9 @@ async function sendCategoriesMenu(chatId) {
     const ukrMailCount = await (await ukrMails()).countDocuments();
 
     const text = `📂 <b>КАТЕГОРИИ</b>\n\n` +
+        `В данном меню вы можете выбрать какие, почты или же аккаунты хотите купить\n\n`+
+        `Оплата у нас CryptoBot - usdt`+
+        `Удачных покупок, и удачного залива!`+
         `Выберите нужную категорию:`;
 
     const options = {
@@ -484,9 +487,9 @@ async function sendFirstmailMenu(chatId) {
 async function sendUsaMailMenu(chatId) {
     const usaMailCount = await (await usaMails()).countDocuments();
 
-    const text = `🇺🇸 <b>ПОЧТЫ FIRSTMAIL USA (${usaMailCount}шт)</b>\n\n` +
+    const text = `🇺🇸 <b>АККАУНТЫ 48Ч ОТЛЕГИ FIRSTMAIL USA (${usaMailCount}шт)</b>\n\n` +
         `<b>В данном меню вы можете:</b>\n` +
-        `✅ • Купить почты USA FIRSTMAIL отлега для спама\n\n` +
+        `✅ • Купить АККАУНТЫ 48Ч USA FIRSTMAIL отлега для спама\n\n` +
         `Цена: <b>10 рублей</b> или <b>0.13 USDT</b> за 1 почту\n\n` +
         `Выберите действие:`;
 
