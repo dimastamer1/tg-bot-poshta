@@ -303,7 +303,6 @@ async function sendMainMenu(chatId, deletePrevious = false) {
         `• Получить код почты TikTok (ТОЛЬКО ICLOUD, и только те, которые куплены у нас)\n` +
         `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
         `• Скоро добавим еще разные почты и аккаунты\n` +
-        `• В будущем - получить связку залива за приглашения друзей\n\n` +
         `⚠️ Бот новый, возможны временные перебои\n\n` +
         `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱` + discountText;
 
@@ -314,7 +313,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
                 [{ text: `📂 КАТЕГОРИИ 📂`, callback_data: 'categories' }],
                 [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
                 [{ text: '🔗 РЕФЕРАЛКА 🔗', callback_data: 'referral' }],
-                [{ text: '🎁 СВЯЗКА УКР 🎁', callback_data: 'get_uk_bundle' }],
+                [{ text: '🎁 СВЯЗКА 🇺🇦 🎁', callback_data: 'get_uk_bundle' }],
                 [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
             ]
         }
@@ -363,7 +362,7 @@ async function sendReferralMenu(chatId) {
 async function handleUkBundle(chatId, user) {
     const usersCollection = await users();
     if (!user.canGetUkBundle) {
-        return bot.sendMessage(chatId, '❌ Чтобы получить связку, нужно пригласить 10 друзей!', {
+        return bot.sendMessage(chatId, '❌ Чтобы получить связку, нужно пригласить 10 друзей, может быть баг если вы пригласили, но не можете открыть меню пишем сюда для выдачи связки - https://t.me/igor_Potekov', {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
@@ -377,7 +376,7 @@ async function handleUkBundle(chatId, user) {
         { user_id: chatId },
         { $set: { hasUkBundle: true, canGetUkBundle: false } }
     );
-    return bot.sendMessage(chatId, '🎉 Поздравляем! Вот ваша связка: (Пока что вот связка...)', {
+    return bot.sendMessage(chatId, '🎉 Поздравляем! Вот ваша связка: ПОКА ЧТО НЕ РОСПИСАЛ ПИШЕМ СЮДА С СКРИНШОТОМ ПРИГЛАШЕНИЙ - https://t.me/igor_Potekov', {
         reply_markup: {
             inline_keyboard: [
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
