@@ -1964,16 +1964,19 @@ bot.onText(/\/add_first (.+)/, async (msg, match) => {
 });
 
 // Добавление почт USA FIRSTMAIL
+// Добавление почт USA FIRSTMAIL
 bot.onText(/\/add_usa (.+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
 
     const usaMailsCollection = await usaMails();
     const newUsaMails = match[1].split(',').map(e => e.trim()).filter(e => e);
 
-    // Для USA фирстмаил почт необходим формат типа "email:password"
+    // Для USA фирстмаил почт необходим формат типа "email:password:extra:info"
     const toInsert = newUsaMails.map(str => {
-        const [email, password] = str.split(':');
-        return { email: email.trim(), password: (password || '').trim() };
+        const parts = str.split(':');
+        const email = parts[0].trim();
+        const password = parts.slice(1).join(':').trim(); // Join the rest as password
+        return { email: email, password: password };
     });
 
     const result = await usaMailsCollection.insertMany(toInsert, { ordered: false });
@@ -1989,10 +1992,12 @@ bot.onText(/\/add_ukr (.+)/, async (msg, match) => {
     const ukrMailsCollection = await ukrMails();
     const newUkrMails = match[1].split(',').map(e => e.trim()).filter(e => e);
 
-    // Для UKR фирстмаил почт необходим формат типа "email:password"
+    // Для UKR фирстмаил почт необходим формат типа "email:password:extra:info"
     const toInsert = newUkrMails.map(str => {
-        const [email, password] = str.split(':');
-        return { email: email.trim(), password: (password || '').trim() };
+        const parts = str.split(':');
+        const email = parts[0].trim();
+        const password = parts.slice(1).join(':').trim(); // Join the rest as password
+        return { email: email, password: password };
     });
 
     const result = await ukrMailsCollection.insertMany(toInsert, { ordered: false });
