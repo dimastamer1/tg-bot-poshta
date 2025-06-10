@@ -52,6 +52,11 @@ function isAdmin(userId) {
   return userId === config.adminId;
 }
 
+// Генерация реферальной ссылки
+function generateReferralLink(userId) {
+  return `https://t.me/${config.botUsername}?start=ref_${userId}`;
+}
+
 // Улучшенная функция для извлечения кода из текста письма (только TikTok и TikTok Studio)
 function getCodeFromText(text, subject) {
   const textLower = text.toLowerCase();
@@ -195,7 +200,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
   const usersCollection = await users();
   await usersCollection.updateOne(
     { user_id: chatId },
-    { $setOnInsert: { user_id: chatId, emails: [], firstmails: [], first_seen: new Date() } },
+    { $setOnInsert: { user_id: chatId, emails: [], firstmails: [], first_seen: new Date(), referrals: [] } },
     { upsert: true }
   );
 
@@ -204,8 +209,8 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     `• Купить почту по выгодной цене\n` +
     `• Получить код почты Tik Tok (ТОЛЬКО ICLOUD, И ТОЛЬКО ТЕ КОТОРЫЕ КУПЛЕННЫЕ У НАС)\n` +
     `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
-    `• Скоро добавим еще разные почты и аккаунты\n` +
-    `• В будущем - получить связку залива за приглашения друзей\n\n` +
+    `• Приглашать друзей и получать бонусы\n` +
+    `• В будущем - получить связку за приглашения друзей\n\n` +
     `⚠️ Бот новый, возможны временные перебои\n\n` +
     `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱`;
 
@@ -215,6 +220,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
       inline_keyboard: [
         [{ text: `📂 КАТЕГОРИИ 📂`, callback_data: 'categories' }],
         [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
+        [{ text: '👥 РЕФЕРАЛКА 👥', callback_data: 'referral' }],
         [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
       ]
     }
@@ -230,6 +236,41 @@ async function sendMainMenu(chatId, deletePrevious = false) {
     caption: welcomeText,
     parse_mode: 'HTML',
     reply_markup: options.reply_markup
+  });
+}
+
+// Меню рефералки
+async function sendReferralMenu(chatId) {
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
+  const referralCount = user?.referrals?.length || 0;
+  const hasUkBundle = user?.hasUkBundle || false;
+
+  const referralLink = generateReferralLink(chatId);
+  
+  const text = `👥 <b>РЕФЕРАЛЬНАЯ ПРОГРАММА</b>\n\n` +
+    `🔗 <b>Ваша реферальная ссылка:</b>\n<code>${referralLink}</code>\n\n` +
+    `👤 <b>Приглашено друзей:</b> ${referralCount}\n\n` +
+    `🎁 <b>Бонусы:</b>\n` +
+    `• За 5 приглашений - скидка 10% на все покупки\n` +
+    `• За 10 приглашений - доступ к связке "УКР"\n\n` +
+    `💰 <b>Текущий статус:</b> ${referralCount >= 10 ? 'Доступна связка "УКР"' : referralCount >= 5 ? 'Доступна скидка 10%' : 'Нет бонусов'}`;
+
+  const buttons = [
+    [{ text: '🔗 Скопировать ссылку', callback_data: 'copy_referral' }]
+  ];
+
+  if (referralCount >= 10 && !hasUkBundle) {
+    buttons.push([{ text: '🎁 ПОЛУЧИТЬ СВЯЗКУ "УКР"', callback_data: 'get_uk_bundle' }]);
+  }
+
+  buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+  return bot.sendMessage(chatId, text, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: buttons
+    }
   });
 }
 
@@ -366,9 +407,16 @@ async function sendFirstmailQuantityMenu(chatId) {
 
 // Меню оплаты iCloud
 async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
-  const totalAmount = (0.09 * quantity).toFixed(2);
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
+  const hasDiscount = user?.referrals?.length >= 5;
+  
+  const baseAmount = 0.09 * quantity;
+  const discount = hasDiscount ? baseAmount * 0.1 : 0;
+  const totalAmount = (baseAmount - discount).toFixed(2);
   
   const text = `💳 <b>Оплата ${quantity} почт(ы)</b>\n\n` +
+    (hasDiscount ? `🎉 <b>Ваша скидка 10% за рефералов!</b>\n` : '') +
     `Сумма: <b>${totalAmount} USDT</b>\n\n` +
     `Нажмите кнопку для оплаты:`;
 
@@ -387,9 +435,16 @@ async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
 
 // Меню оплаты FIRSTMAIL
 async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
-  const totalAmount = (0.082 * quantity).toFixed(2);
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
+  const hasDiscount = user?.referrals?.length >= 5;
+  
+  const baseAmount = 0.082 * quantity;
+  const discount = hasDiscount ? baseAmount * 0.1 : 0;
+  const totalAmount = (baseAmount - discount).toFixed(2);
 
   const text = `💳 <b>Оплата ${quantity} почт(ы) FIRSTMAIL</b>\n\n` +
+    (hasDiscount ? `🎉 <b>Ваша скидка 10% за рефералов!</b>\n` : '') +
     `Сумма: <b>${totalAmount} USDT</b>\n\n` +
     `Нажмите кнопку для оплаты:`;
 
@@ -409,12 +464,19 @@ async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
 // Создание инвойса с транзакцией iCloud
 async function createInvoice(userId, quantity) {
   try {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: userId });
+    const hasDiscount = user?.referrals?.length >= 5;
+    
+    const baseAmount = 0.09 * quantity;
+    const discount = hasDiscount ? baseAmount * 0.1 : 0;
+    const totalAmount = baseAmount - discount;
+    
     const transactionId = `buy_${userId}_${Date.now()}`;
-    const amount = 0.09* quantity;
     
     const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
       asset: 'USDT',
-      amount: amount,
+      amount: totalAmount,
       description: `Покупка ${quantity} почт iCloud`,
       hidden_message: 'Спасибо за покупку!',
       paid_btn_name: 'openBot',
@@ -427,7 +489,6 @@ async function createInvoice(userId, quantity) {
       }
     });
 
-    const usersCollection = await users();
     await usersCollection.updateOne(
       { user_id: userId },
       { 
@@ -436,7 +497,8 @@ async function createInvoice(userId, quantity) {
           invoiceId: response.data.result.invoice_id,
           quantity: quantity,
           status: 'pending',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          discountApplied: hasDiscount
         }}
       },
       { upsert: true }
@@ -452,12 +514,19 @@ async function createInvoice(userId, quantity) {
 // Создание инвойса для FIRSTMAIL
 async function createFirstmailInvoice(userId, quantity) {
   try {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: userId });
+    const hasDiscount = user?.referrals?.length >= 5;
+    
+    const baseAmount = 0.082 * quantity;
+    const discount = hasDiscount ? baseAmount * 0.1 : 0;
+    const totalAmount = baseAmount - discount;
+    
     const transactionId = `buy_firstmail_${userId}_${Date.now()}`;
-    const amount = 0.082 * quantity;
 
     const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
       asset: 'USDT',
-      amount: amount,
+      amount: totalAmount,
       description: `Покупка ${quantity} почт FIRSTMAIL`,
       hidden_message: 'Спасибо за покупку!',
       paid_btn_name: 'openBot',
@@ -470,7 +539,6 @@ async function createFirstmailInvoice(userId, quantity) {
       }
     });
 
-    const usersCollection = await users();
     await usersCollection.updateOne(
       { user_id: userId },
       { 
@@ -479,7 +547,8 @@ async function createFirstmailInvoice(userId, quantity) {
           invoiceId: response.data.result.invoice_id,
           quantity: quantity,
           status: 'pending',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          discountApplied: hasDiscount
         }}
       },
       { upsert: true }
@@ -633,9 +702,16 @@ async function handleSuccessfulFirstmailPayment(userId, transactionId) {
     email: { $in: firstmailsToSell.map(e => e.email) }
   });
 
+  // Отправляем сообщение о покупке
   await bot.sendMessage(userId,
-    `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+    `🎉 <b>Спасибо за покупку почт FIRSTMAIL!</b>\n\n` +
+    `Ваши почты указаны ниже:`,
     { parse_mode: 'HTML' });
+
+  // Отправляем каждую почту отдельным сообщением
+  for (const firstmail of firstmailsToSell) {
+    await bot.sendMessage(userId, `${firstmail.email}:${firstmail.password}`);
+  }
 
   return true;
 }
@@ -814,6 +890,66 @@ bot.on('callback_query', async (callbackQuery) => {
     if (data === 'back_to_main') {
       await bot.deleteMessage(chatId, callbackQuery.message.message_id);
       return sendMainMenu(chatId);
+    }
+
+    // Рефералка
+    if (data === 'referral') {
+      await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+      return sendReferralMenu(chatId);
+    }
+
+    // Копирование реферальной ссылки
+    if (data === 'copy_referral') {
+      const referralLink = generateReferralLink(chatId);
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: 'Ссылка скопирована в буфер обмена!',
+        show_alert: false
+      });
+      return bot.sendMessage(chatId, `🔗 <b>Ваша реферальная ссылка:</b>\n<code>${referralLink}</code>\n\nПоделитесь ей с друзьями!`, {
+        parse_mode: 'HTML'
+      });
+    }
+
+    // Получение связки УКР
+    if (data === 'get_uk_bundle') {
+      const user = await usersCollection.findOne({ user_id: chatId });
+      
+      if (!user || user.referrals?.length < 10) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+          text: 'У вас недостаточно рефералов для получения связки',
+          show_alert: true
+        });
+      }
+
+      if (user.hasUkBundle) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+          text: 'Вы уже получали связку УКР',
+          show_alert: true
+        });
+      }
+
+      // Здесь должна быть логика выдачи связки
+      // Для примера просто отмечаем, что пользователь получил связку
+      await usersCollection.updateOne(
+        { user_id: chatId },
+        { $set: { hasUkBundle: true } }
+      );
+
+      await bot.sendMessage(chatId, 
+        '🎉 <b>Поздравляем! Вы получили связку УКР</b>\n\n' +
+        'Связка будет отправлена вам в ближайшее время.\n' +
+        'Спасибо за приглашение друзей!', {
+        parse_mode: 'HTML'
+      });
+
+      // Уведомление админу
+      await bot.sendMessage(config.adminId, 
+        `👤 Пользователь @${callbackQuery.from.username || 'без username'} (ID: ${chatId}) получил связку УКР за 10 рефералов\n\n` +
+        `Всего рефералов: ${user.referrals?.length || 0}`, {
+        parse_mode: 'HTML'
+      });
+
+      return;
     }
 
     // Категории
@@ -1059,12 +1195,52 @@ bot.on('callback_query', async (callbackQuery) => {
   }
 });
 
-// Команда /start
-bot.onText(/\/start/, async (msg) => {
+// Команда /start с реферальной системой
+bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
+  const startPayload = match[1];
 
   // Логируем нового пользователя
   console.log(`Новый пользователь: ${chatId}`, msg.from);
+
+  // Обработка реферальной ссылки
+  if (startPayload && startPayload.startsWith('ref_')) {
+    const referrerId = parseInt(startPayload.replace('ref_', ''));
+    
+    if (referrerId && referrerId !== chatId) {
+      const usersCollection = await users();
+      
+      // Проверяем, что пользователь новый
+      const existingUser = await usersCollection.findOne({ user_id: chatId });
+      if (!existingUser) {
+        // Добавляем реферала к пригласившему
+        await usersCollection.updateOne(
+          { user_id: referrerId },
+          { 
+            $addToSet: { referrals: chatId },
+            $setOnInsert: { 
+              user_id: referrerId,
+              first_seen: new Date(),
+              last_seen: new Date(),
+              referrals: [chatId]
+            }
+          },
+          { upsert: true }
+        );
+
+        // Уведомляем пригласившего
+        try {
+          await bot.sendMessage(referrerId, 
+            `🎉 У вас новый реферал!\n\n` +
+            `👤 @${msg.from.username || 'без username'}\n` +
+            `🆔 ID: ${chatId}\n\n` +
+            `Теперь у вас: ${(await usersCollection.findOne({ user_id: referrerId })).referrals?.length || 1} рефералов`);
+        } catch (e) {
+          console.error('Не удалось уведомить реферера:', e);
+        }
+      }
+    }
+  }
 
   // Сохраняем в базу
   const usersCollection = await users();
@@ -1079,8 +1255,10 @@ bot.onText(/\/start/, async (msg) => {
         first_seen: new Date(),
         last_seen: new Date(),
         emails: [],
-        firstmails: []
-      }
+        firstmails: [],
+        referrals: []
+      },
+      $set: { last_seen: new Date() }
     },
     { upsert: true }
   );
@@ -1140,6 +1318,7 @@ bot.onText(/\/pool_status/, async (msg) => {
 
   bot.sendMessage(msg.chat.id, message);
 });
+
 // Статус пула FIRSTMAIL
 bot.onText(/\/firstmail_status/, async (msg) => {
   if (!isAdmin(msg.from.id)) return;
@@ -1154,6 +1333,38 @@ bot.onText(/\/firstmail_status/, async (msg) => {
   if (count > 200) message += '\n\n...и другие (показаны первые 200)';
 
   bot.sendMessage(msg.chat.id, message);
+});
+
+// Реферальная статистика
+bot.onText(/\/ref_stats/, async (msg) => {
+  if (!isAdmin(msg.from.id)) return;
+
+  const usersCollection = await users();
+  const topReferrers = await usersCollection.aggregate([
+    { $project: { user_id: 1, referralsCount: { $size: { $ifNull: ["$referrals", []] } } } },
+    { $sort: { referralsCount: -1 } },
+    { $limit: 20 }
+  ]).toArray();
+
+  let message = `📊 <b>Топ 20 рефереров</b>\n\n`;
+  for (const user of topReferrers) {
+    message += `👤 ${user.user_id}: ${user.referralsCount} рефералов\n`;
+  }
+
+  const totalUsers = await usersCollection.countDocuments();
+  const usersWithReferrals = await usersCollection.countDocuments({ referrals: { $exists: true, $not: { $size: 0 } } });
+  const totalReferrals = (await usersCollection.aggregate([
+    { $project: { count: { $size: { $ifNull: ["$referrals", []] } } } },
+    { $group: { _id: null, total: { $sum: "$count" } } }
+  ]).toArray())[0]?.total || 0;
+
+  message += `\n<b>Общая статистика:</b>\n`;
+  message += `👥 Всего пользователей: ${totalUsers}\n`;
+  message += `👤 Пользователей с рефералами: ${usersWithReferrals}\n`;
+  message += `🔗 Всего рефералов: ${totalReferrals}\n`;
+  message += `🎁 Пользователей со связкой УКР: ${await usersCollection.countDocuments({ hasUkBundle: true })}`;
+
+  bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
 });
 
 // Проверка подключения к базе
@@ -1172,7 +1383,11 @@ bot.onText(/\/db_status/, async (msg) => {
       `📊 Размер базы: ${(stats.dataSize / 1024).toFixed(2)} KB\n` +
       `📧 Почтов в пуле: ${emailCount}\n` +
       `🔥 FIRSTMAIL в пуле: ${firstmailCount}\n` +
-      `👥 Пользователей: ${await (await users()).countDocuments()}`,
+      `👥 Пользователей: ${await (await users()).countDocuments()}\n` +
+      `🔗 Всего рефералов: ${(await (await users()).aggregate([
+        { $project: { count: { $size: { $ifNull: ["$referrals", []] } } } },
+        { $group: { _id: null, total: { $sum: "$count" } } }
+      ]).toArray())[0]?.total || 0}`,
       { parse_mode: 'HTML' });
   } catch (e) {
     bot.sendMessage(msg.chat.id, `❌ Ошибка подключения: ${e.message}`);
@@ -1192,9 +1407,11 @@ bot.onText(/\/user_stats/, async (msg) => {
   bot.sendMessage(msg.chat.id,
     `📊 <b>Статистика пользователей</b>\n\n` +
     `👥 Всего пользователей: <b>${totalUsers}</b>\n` +
-    `🟢 Активных за неделю: <b>${activeUsers}</b>\n\n` +
+    `🟢 Активных за неделю: <b>${activeUsers}</b>\n` +
+    `🔗 Пользователей с рефералами: <b>${await usersCollection.countDocuments({ referrals: { $exists: true, $not: { $size: 0 } } })}</b>\n\n` +
     `Последние 5 пользователей:`,
-    { parse_mode: 'HTML' });
+    { parse_mode: 'HTML' }
+  );
 
   // Показываем последних 5 пользователей
   const recentUsers = await usersCollection.find()
@@ -1207,7 +1424,9 @@ bot.onText(/\/user_stats/, async (msg) => {
       `👤 ID: <code>${user.user_id}</code>`,
       `🆔 @${user.username || 'нет'}`,
       `📅 Первый визит: ${user.first_seen.toLocaleString()}`,
-      `🔄 Последний визит: ${user.last_seen?.toLocaleString() || 'никогда'}`
+      `🔄 Последний визит: ${user.last_seen?.toLocaleString() || 'никогда'}`,
+      `🔗 Рефералов: ${user.referrals?.length || 0}`,
+      `🎁 Связка УКР: ${user.hasUkBundle ? 'да' : 'нет'}`
     ].join('\n');
 
     await bot.sendMessage(msg.chat.id, userInfo, { parse_mode: 'HTML' });
