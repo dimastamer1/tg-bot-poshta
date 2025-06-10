@@ -422,8 +422,8 @@ async function sendCategoriesMenu(chatId) {
             inline_keyboard: [
                 [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
                 [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
-                [{ text: `🇺🇸 FIRSTMAIL USA (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
-                [{ text: `🇺🇦 FIRSTMAIL UKR (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
+                [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
+                [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
             ]
         }
@@ -494,7 +494,7 @@ async function sendUsaMailMenu(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ ПОЧТУ USA FIRSTMAIL 💰', callback_data: 'buy_usa_mail' }],
+                [{ text: '💰 КУПИТЬ АККАУНТ 48Ч USA FIRSTMAIL 💰', callback_data: 'buy_usa_mail' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
@@ -507,17 +507,17 @@ async function sendUsaMailMenu(chatId) {
 async function sendUkrMailMenu(chatId) {
     const ukrMailCount = await (await ukrMails()).countDocuments();
 
-    const text = `🇺🇦 <b>ПОЧТЫ FIRSTMAIL UKR (${ukrMailCount}шт)</b>\n\n` +
+    const text = `🇺🇦 <b>АККАУНТЫ 48Ч ОТЛЕГА FIRSTMAIL UKR (${ukrMailCount}шт)</b>\n\n` +
         `<b>В данном меню вы можете:</b>\n` +
-        `✅ • Купить почты UKR FIRSTMAIL отлега для спама\n\n` +
-        `Цена: <b>10 рублей</b> или <b>0.13 USDT</b> за 1 почту\n\n` +
+        `✅ • Купить АККАУНТЫ 48Ч ОТЛЕГИ UKR FIRSTMAIL отлега для спама\n\n` +
+        `Цена: <b>10 рублей</b> или <b>0.13 USDT</b> за 1 АККАУНТ\n\n` +
         `Выберите действие:`;
 
     const options = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ ПОЧТУ UKR FIRSTMAIL 💰', callback_data: 'buy_ukr_mail' }],
+                [{ text: '💰 КУПИТЬ АККАУНТ 48Ч UKR FIRSTMAIL 💰', callback_data: 'buy_ukr_mail' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
@@ -603,9 +603,9 @@ async function sendUsaMailQuantityMenu(chatId) {
     }
     rows.push([{ text: '🔙 Назад', callback_data: 'usa_mail_category' }]);
 
-    const text = `📦 <b>Выберите количество почт USA FIRSTMAIL, которое хотите приобрести</b>\n\n` +
+    const text = `📦 <b>Выберите количество АККАУНТОВ 48Ч USA FIRSTMAIL, которое хотите приобрести</b>\n\n` +
         `Доступно: <b>${maxAvailable}</b> почт\n` +
-        `Цена: <b>10 Рублей</b> или <b>0.13 USDT</b> за 1 почту`;
+        `Цена: <b>10 Рублей</b> или <b>0.13 USDT</b> за 1 АККАУНТ`;
 
     const options = {
         parse_mode: 'HTML',
@@ -633,9 +633,9 @@ async function sendUkrMailQuantityMenu(chatId) {
     }
     rows.push([{ text: '🔙 Назад', callback_data: 'ukr_mail_category' }]);
 
-    const text = `📦 <b>Выберите количество почт UKR FIRSTMAIL, которое хотите приобрести</b>\n\n` +
+    const text = `📦 <b>Выберите количество АККАУНТОВ 48Ч UKR FIRSTMAIL, которое хотите приобрести</b>\n\n` +
         `Доступно: <b>${maxAvailable}</b> почт\n` +
-        `Цена: <b>10 Рублей</b> или <b>0.13 USDT</b> за 1 почту`;
+        `Цена: <b>10 Рублей</b> или <b>0.13 USDT</b> за 1 АККАУНТ`;
 
     const options = {
         parse_mode: 'HTML',
@@ -693,7 +693,7 @@ async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
 async function sendUsaMailPaymentMenu(chatId, invoiceUrl, quantity) {
     const totalAmount = (0.132 * quantity).toFixed(2);
 
-    const text = `💳 <b>Оплата ${quantity} почт(ы) USA FIRSTMAIL</b>\n\n` +
+    const text = `💳 <b>Оплата ${quantity} АККАУНТ-ОВ USA FIRSTMAIL</b>\n\n` +
         `Сумма: <b>${totalAmount} USDT</b>\n\n` +
         `Нажмите кнопку для оплаты:`;
 
@@ -714,7 +714,7 @@ async function sendUsaMailPaymentMenu(chatId, invoiceUrl, quantity) {
 async function sendUkrMailPaymentMenu(chatId, invoiceUrl, quantity) {
     const totalAmount = (0.132 * quantity).toFixed(2);
 
-    const text = `💳 <b>Оплата ${quantity} почт(ы) UKR FIRSTMAIL</b>\n\n` +
+    const text = `💳 <b>Оплата ${quantity} АККАУНТ-ОВ UKR FIRSTMAIL</b>\n\n` +
         `Сумма: <b>${totalAmount} USDT</b>\n\n` +
         `Нажмите кнопку для оплаты:`;
 
@@ -1305,9 +1305,6 @@ async function sendMyPurchasesMenu(chatId) {
 
     const buttons = [];
     if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
-    if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL 📧', callback_data: 'my_firstmails' }]);
-    if (hasUsaMail) buttons.push([{ text: '🇺🇸 Мои USA FIRSTMAIL 🇺🇸', callback_data: 'my_usa_mails' }]);
-    if (hasUkrMail) buttons.push([{ text: '🇺🇦 Мои UKR FIRSTMAIL 🇺🇦', callback_data: 'my_ukr_mails' }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
     if (!hasIcloud && !hasFirstmail && !hasUsaMail && !hasUkrMail) {
