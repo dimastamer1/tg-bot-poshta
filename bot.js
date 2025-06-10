@@ -192,6 +192,7 @@ function generateReferralLink(userId) {
 }
 
 // /start с рефералкой, без конфликтов по referrals и last_seen, бонусы и скидка
+// /start с рефералкой, без конфликтов по referrals и last_seen, бонусы и скидка
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const startPayload = match[1];
@@ -278,13 +279,11 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
     }
 
     // ... далее вызов главного меню ...
-    sendMainMenu(chatId);
+    sendMainMenu(chatId, false, msg); // Pass msg object
 });
 
-// --- продолжение ---
-
 // Главное меню с инлайн-кнопками
-async function sendMainMenu(chatId, deletePrevious = false) {
+async function sendMainMenu(chatId, deletePrevious = false, msg = null) { // Add msg parameter
     const emailsCount = await (await emails()).countDocuments();
     const firstmailCount = await (await firstmails()).countDocuments();
     const usaMailCount = await (await usaMails()).countDocuments();
@@ -296,9 +295,9 @@ async function sendMainMenu(chatId, deletePrevious = false) {
         {
             $setOnInsert: {
                 user_id: chatId,
-                username: msg.from.username || '',
-                first_name: msg.from.first_name || '',
-                last_name: msg.from.last_name || '',
+                username: msg?.from?.username || '', // Use optional chaining
+                first_name: msg?.from?.first_name || '', // Use optional chaining
+                last_name: msg?.from?.last_name || '', // Use optional chaining
                 first_seen: new Date(),
                 emails: [],
                 firstmails: [],
