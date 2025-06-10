@@ -779,7 +779,7 @@ async function createInvoice(userId, quantity) {
     }
 }
 
-// Создание инвойса для FIRSTMAIL
+// Создание инвойса для// Создание инвойса для FIRSTMAIL
 async function createFirstmailInvoice(userId, quantity) {
     try {
         const transactionId = `buy_firstmail_${userId}_${Date.now()}`;
@@ -1575,6 +1575,7 @@ bot.on('callback_query', async (callbackQuery) => {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             return sendQuantityMenu(chatId);
         }
+
 
         // Купить firstmail
         if (data === 'buy_firstmail') {
