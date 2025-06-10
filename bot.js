@@ -211,6 +211,7 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
                 emails: [],
                 firstmails: [],
                 referrals: [],
+                invitedBy: null,
                 hasDiscount: false,
                 hasUkBundle: false,
                 canGetUkBundle: false
@@ -275,7 +276,7 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
     }
 
     // ... далее вызов главного меню ...
-    await sendMainMenu(chatId);
+    sendMainMenu(chatId);
 });
 
 // --- продолжение ---
@@ -292,6 +293,10 @@ async function sendMainMenu(chatId, deletePrevious = false) {
         { upsert: true }
     );
 
+    const user = await usersCollection.findOne({ user_id: chatId });
+    const hasDiscount = user && user.hasDiscount;
+    const discountText = hasDiscount ? '\n\n🎉 У вас есть скидка 10%!' : '';
+
     const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для спама TikTok!</b>\n\n` +
         `<b>Тут вы можете:</b>\n` +
         `• Купить почту по выгодной цене\n` +
@@ -300,7 +305,7 @@ async function sendMainMenu(chatId, deletePrevious = false) {
         `• Скоро добавим еще разные почты и аккаунты\n` +
         `• В будущем - получить связку залива за приглашения друзей\n\n` +
         `⚠️ Бот новый, возможны временные перебои\n\n` +
-        `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱`;
+        `🎉 <b>СКОРО АКЦИЯ</b> 10.06 почты всего по 6 рублей будут! 😱` + discountText;
 
     const options = {
         parse_mode: 'HTML',
@@ -308,6 +313,8 @@ async function sendMainMenu(chatId, deletePrevious = false) {
             inline_keyboard: [
                 [{ text: `📂 КАТЕГОРИИ 📂`, callback_data: 'categories' }],
                 [{ text: '🛒 МОИ ПОКУПКИ 🛒', callback_data: 'my_purchases' }],
+                [{ text: '🔗 РЕФЕРАЛКА 🔗', callback_data: 'referral' }],
+                [{ text: '🎁 СВЯЗКА УКР 🎁', callback_data: 'get_uk_bundle' }],
                 [{ text: '🆘 ПОДДЕРЖКА 🆘', callback_data: 'support' }]
             ]
         }
@@ -323,6 +330,59 @@ async function sendMainMenu(chatId, deletePrevious = false) {
         caption: welcomeText,
         parse_mode: 'HTML',
         reply_markup: options.reply_markup
+    });
+}
+
+// Меню рефералки
+async function sendReferralMenu(chatId) {
+    const referralLink = generateReferralLink(chatId);
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+    const referralsCount = user.referrals ? user.referrals.length : 0;
+    const invitedBy = user.invitedBy ? user.invitedBy : 'никто не приглашал';
+
+    const text = `🔗 <b>Ваша реферальная ссылка:</b>\n<code>${referralLink}</code>\n\n` +
+        `👥 <b>Количество ваших рефералов:</b> ${referralsCount}\n` +
+        `🎁 <b>Вас пригласил:</b> ${invitedBy}\n\n` +
+        `Поделитесь ссылкой с друзьями и получайте бонусы!`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '💰 Cкопировать ссылку', callback_data: 'copy_referral' }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
+// Обработка связки УКР
+async function handleUkBundle(chatId, user) {
+    const usersCollection = await users();
+    if (!user.canGetUkBundle) {
+        return bot.sendMessage(chatId, '❌ Чтобы получить связку, нужно пригласить 10 друзей!', {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                ]
+            }
+        });
+    }
+
+    // Выдача связки (заглушка)
+    await usersCollection.updateOne(
+        { user_id: chatId },
+        { $set: { hasUkBundle: true, canGetUkBundle: false } }
+    );
+    return bot.sendMessage(chatId, '🎉 Поздравляем! Вот ваша связка: (Пока что вот связка...)', {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+            ]
+        }
     });
 }
 
@@ -683,121 +743,120 @@ async function handleSuccessfulPayment(userId, transactionId) {
 
     return true;
 }
-
 // Обработка успешной оплаты firstmail
 async function handleSuccessfulFirstmailPayment(userId, transactionId) {
-    const usersCollection = await users();
-    const firstmailsCollection = await firstmails();
+  const usersCollection = await users();
+  const firstmailsCollection = await firstmails();
 
-    const user = await usersCollection.findOne({ user_id: userId });
-    if (!user || !user.firstmail_transactions || !user.firstmail_transactions[transactionId]) {
-        return false;
-    }
+  const user = await usersCollection.findOne({ user_id: userId });
+  if (!user || !user.firstmail_transactions || !user.firstmail_transactions[transactionId]) {
+      return false;
+  }
 
-    const quantity = user.firstmail_transactions[transactionId].quantity;
+  const quantity = user.firstmail_transactions[transactionId].quantity;
 
-    // Получаем firstmail для продажи
-    const firstmailsToSell = await firstmailsCollection.aggregate([
-        { $sample: { size: quantity } }
-    ]).toArray();
+  // Получаем firstmail для продажи
+  const firstmailsToSell = await firstmailsCollection.aggregate([
+      { $sample: { size: quantity } }
+  ]).toArray();
 
-    if (firstmailsToSell.length < quantity) {
-        await usersCollection.updateOne(
-            { user_id: userId },
-            { $set: { [`firstmail_transactions.${transactionId}.status`]: 'failed' } }
-        );
+  if (firstmailsToSell.length < quantity) {
+      await usersCollection.updateOne(
+          { user_id: userId },
+          { $set: { [`firstmail_transactions.${transactionId}.status`]: 'failed' } }
+      );
 
-        await bot.sendMessage(userId,
-            `❌ Недостаточно почт FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
-            { parse_mode: 'HTML' });
-        return false;
-    }
+      await bot.sendMessage(userId,
+          `❌ Недостаточно почт FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
+          { parse_mode: 'HTML' });
+      return false;
+  }
 
-    // Обновляем данные пользователя
-    await usersCollection.updateOne(
-        { user_id: userId },
-        {
-            $push: { firstmails: { $each: firstmailsToSell.map(e => `${e.email}:${e.password}`) } },
-            $set: {
-                [`firstmail_transactions.${transactionId}.status`]: 'completed',
-                [`firstmail_transactions.${transactionId}.emails`]: firstmailsToSell.map(e => `${e.email}:${e.password}`)
-            }
-        }
-    );
+  // Обновляем данные пользователя
+  await usersCollection.updateOne(
+      { user_id: userId },
+      {
+          $push: { firstmails: { $each: firstmailsToSell.map(e => `${e.email}:${e.password}`) } },
+          $set: {
+              [`firstmail_transactions.${transactionId}.status`]: 'completed',
+              [`firstmail_transactions.${transactionId}.emails`]: firstmailsToSell.map(e => `${e.email}:${e.password}`)
+          }
+      }
+  );
 
-    // Удаляем проданные почты
-    await firstmailsCollection.deleteMany({
-        email: { $in: firstmailsToSell.map(e => e.email) }
-    });
+  // Удаляем проданные почты
+  await firstmailsCollection.deleteMany({
+      email: { $in: firstmailsToSell.map(e => e.email) }
+  });
 
-    await bot.sendMessage(userId,
-        `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
-        { parse_mode: 'HTML' });
+  await bot.sendMessage(userId,
+      `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+      { parse_mode: 'HTML' });
 
-    return true;
+  return true;
 }
 
 // Периодическая проверка оплаты с защитой от дублирования iCloud/FIRSTMAIL
 setInterval(async () => {
-    try {
-        const usersCollection = await users();
-        const usersWithTransactions = await usersCollection.find({
-            "transactions": { $exists: true }
-        }).toArray();
+  try {
+      const usersCollection = await users();
+      const usersWithTransactions = await usersCollection.find({
+          "transactions": { $exists: true }
+      }).toArray();
 
-        for (const user of usersWithTransactions) {
-            for (const [transactionId, transaction] of Object.entries(user.transactions)) {
-                if (transaction.status === 'pending' && transaction.invoiceId) {
-                    const invoice = await checkPayment(transaction.invoiceId);
+      for (const user of usersWithTransactions) {
+          for (const [transactionId, transaction] of Object.entries(user.transactions)) {
+              if (transaction.status === 'pending' && transaction.invoiceId) {
+                  const invoice = await checkPayment(transaction.invoiceId);
 
-                    if (invoice?.status === 'paid') {
-                        await handleSuccessfulPayment(user.user_id, transactionId);
-                    } else if (invoice?.status === 'expired') {
-                        await usersCollection.updateOne(
-                            { user_id: user.user_id },
-                            { $set: { [`transactions.${transactionId}.status`]: 'expired' } }
-                        );
-                    }
-                }
-            }
-        }
+                  if (invoice?.status === 'paid') {
+                      await handleSuccessfulPayment(user.user_id, transactionId);
+                  } else if (invoice?.status === 'expired') {
+                      await usersCollection.updateOne(
+                          { user_id: user.user_id },
+                          { $set: { [`transactions.${transactionId}.status`]: 'expired' } }
+                      );
+                  }
+              }
+          }
+      }
 
-        // FIRSTMAIL
-        const usersWithFirstmail = await usersCollection.find({
-            "firstmail_transactions": { $exists: true }
-        }).toArray();
+      // FIRSTMAIL
+      const usersWithFirstmail = await usersCollection.find({
+          "firstmail_transactions": { $exists: true }
+      }).toArray();
 
-        for (const user of usersWithFirstmail) {
-            for (const [transactionId, transaction] of Object.entries(user.firstmail_transactions)) {
-                if (transaction.status === 'pending' && transaction.invoiceId) {
-                    const invoice = await checkFirstmailPayment(transaction.invoiceId);
+      for (const user of usersWithFirstmail) {
+          for (const [transactionId, transaction] of Object.entries(user.firstmail_transactions)) {
+              if (transaction.status === 'pending' && transaction.invoiceId) {
+                  const invoice = await checkFirstmailPayment(transaction.invoiceId);
 
-                    if (invoice?.status === 'paid') {
-                        await handleSuccessfulFirstmailPayment(user.user_id, transactionId);
-                    } else if (invoice?.status === 'expired') {
-                        await usersCollection.updateOne(
-                            { user_id: user.user_id },
-                            { $set: { [`firstmail_transactions.${transactionId}.status`]: 'expired' } }
-                        );
-                    }
-                }
-            }
-        }
-    } catch (err) {
-        console.error('Ошибка при проверке платежей:', err);
-    }
+                  if (invoice?.status === 'paid') {
+                      await handleSuccessfulFirstmailPayment(user.user_id, transactionId);
+                  } else if (invoice?.status === 'expired') {
+                      await usersCollection.updateOne(
+                          { user_id: user.user_id },
+                          { $set: { [`firstmail_transactions.${transactionId}.status`]: 'expired' } }
+                      );
+                  }
+              }
+          }
+      }
+  } catch (err) {
+      console.error('Ошибка при проверке платежей:', err);
+  }
 }, 10000); // Проверяем каждые 10 секунд (было 20)
 
 // Мои покупки (iCloud + FIRSTMAIL)
 async function sendMyPurchasesMenu(chatId) {
-    const usersCollection = await users();
-    const user = await usersCollection.findOne({ user_id: chatId });
+  const usersCollection = await users();
+  const user = await usersCollection.findOne({ user_id: chatId });
 
-    const hasIcloud = user && user.emails && user.emails.length > 0;
-    const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
+  const hasIcloud = user && user.emails && user.emails.length > 0;
+  const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
 
-    const buttons = [];
-    if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
+  const buttons = [];
+  if (hasIcloud) buttons.push([{ text:'📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
     if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL 📧', callback_data: 'my_firstmails' }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
