@@ -4,6 +4,7 @@ export default {
   telegramToken: process.env.TELEGRAM_TOKEN,
   cryptoBotToken: process.env.CRYPTO_BOT_TOKEN,
   adminId: Number(process.env.ADMIN_ID),
+  botUsername: process.env.BOT_USERNAME, // <-- добавлено для генерации реферальной ссылки
   imap: {
     user: process.env.IMAP_USER,
     password: process.env.IMAP_PASSWORD,
