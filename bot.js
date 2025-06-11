@@ -192,7 +192,6 @@ function generateReferralLink(userId) {
 }
 
 // /start с рефералкой, без конфликтов по referrals и last_seen, бонусы и скидка
-// /start с рефералкой, без конфликтов по referrals и last_seen, бонусы и скидка
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const startPayload = match[1];
