@@ -461,6 +461,43 @@ async function sendEmailsMenu(chatId) {
     return bot.sendMessage(chatId, text, options);
 }
 
+// Меню TG PASING
+async function sendTgPasingMenu(chatId) {
+    const text = `🤖 <b>СОФТ TG PASING</b>\n\n` +
+        `Эксклюзивный софт для пасинга Telegram-аккаунтов!\n\n` +
+        `Цена: <b>15 USDT</b>\n\n` +
+        `После оплаты вы получите инструкцию, как получить доступ к софту.`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '💰 КУПИТЬ TG PASING', callback_data: 'buy_tg_pasing' }],
+                [{ text: 'ℹ️ ФУНКЦИИ СОФТА', callback_data: 'tg_pasing_info' }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
+// Описание функций TG PASING
+async function sendTgPasingInfo(chatId) {
+    const text = `ℹ️ <b>ФУНКЦИИ TG PASING</b>\n\n` +
+        `Тут будет подробное описание всех возможностей софта TG PASING.\n\n` +
+        `Для подробностей — напишите в поддержку: @igor_Potekov`;
+
+    return bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🔙 Назад', callback_data: 'tg_pasing_category' }]
+            ]
+        }
+    });
+}
+
 // Меню FIRSTMAIL с инлайн-кнопками
 async function sendFirstmailMenu(chatId) {
     const firstmailCount = await (await firstmails()).countDocuments();
@@ -499,44 +536,6 @@ async function sendUsaMailMenu(chatId) {
         reply_markup: {
             inline_keyboard: [
                 [{ text: '💰 КУПИТЬ АККАУНТ 48Ч USA FIRSTMAIL 💰', callback_data: 'buy_usa_mail' }],
-                [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
-            ]
-        }
-    };
-
-    return bot.sendMessage(chatId, text, options);
-}
-
-
-// Краткое описание функций TG PASING (ты потом сам дополнишь)
-async function sendTgPasingInfo(chatId) {
-    const text = `ℹ️ <b>ФУНКЦИИ TG PASING</b>\n\n` +
-        `Тут будет описание всех функций софта TG PASING. (Ты сам тут потом напишешь подробно)\n\n` +
-        `Для подробностей — напиши в поддержку: @igor_Potekov`;
-
-    return bot.sendMessage(chatId, text, {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🔙 Назад', callback_data: 'tg_pasing_category' }]
-            ]
-        }
-    });
-}
-
-// Меню TG PASING
-async function sendTgPasingMenu(chatId) {
-    const text = `🤖 <b>СОФТ TG PASING</b>\n\n` +
-        `Уникальный софт для пасинга Telegram аккаунтов!\n\n` +
-        `Цена: <b>15 USDT</b>\n\n` +
-        `После оплаты вы получите инструкцию, как получить доступ к софту.`;
-
-    const options = {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '💰 КУПИТЬ TG PASING', callback_data: 'buy_tg_pasing' }],
-                [{ text: 'ℹ️ ФУНКЦИИ СОФТА', callback_data: 'tg_pasing_info' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
@@ -689,23 +688,6 @@ async function sendUkrMailQuantityMenu(chatId) {
     return bot.sendMessage(chatId, text, options);
 }
 
-// Меню оплаты TG PASING
-async function sendTgPasingPaymentMenu(chatId, invoiceUrl) {
-    const text = `💳 <b>Оплата софта TG PASING</b>\n\n` +
-        `Сумма: <b>15 USDT</b>\n\n` +
-        `Нажмите кнопку для оплаты:`;
-
-    return bot.sendMessage(chatId, text, {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
-                [{ text: '🔙 Назад', callback_data: 'tg_pasing_category' }]
-            ]
-        }
-    });
-}
-
 // Меню оплаты iCloud
 async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
     const totalAmount = (0.09 * quantity).toFixed(2);
@@ -811,7 +793,7 @@ async function createTgPasingInvoice(userId) {
             }
         });
 
-        // Записываем транзакцию пользователю
+        // Сохраняем транзакцию
         const usersCollection = await users();
         await usersCollection.updateOne(
             { user_id: userId },
@@ -832,6 +814,23 @@ async function createTgPasingInvoice(userId) {
         console.error('Ошибка при создании инвойса TG PASING:', err.response?.data || err.message);
         return null;
     }
+}
+
+// Меню оплаты TG PASING
+async function sendTgPasingPaymentMenu(chatId, invoiceUrl) {
+    const text = `💳 <b>Оплата софта TG PASING</b>\n\n` +
+        `Сумма: <b>15 USDT</b>\n\n` +
+        `Нажмите кнопку для оплаты:`;
+
+    return bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
+                [{ text: '🔙 Назад', callback_data: 'tg_pasing_category' }]
+            ]
+        }
+    });
 }
 
 // Создание инвойса с транзакцией iCloud
@@ -1013,21 +1012,6 @@ async function createUkrMailInvoice(userId, quantity) {
     }
 }
 
-// Проверка оплаты TG PASING
-async function checkTgPasingPayment(invoiceId) {
-    try {
-        const response = await axios.get(`https://pay.crypt.bot/api/getInvoices?invoice_ids=${invoiceId}`, {
-            headers: {
-                'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN
-            }
-        });
-        return response.data.result.items[0];
-    } catch (err) {
-        console.error('Ошибка при проверке оплаты TG PASING:', err);
-        return null;
-    }
-}
-
 // Проверка оплаты iCloud
 async function checkPayment(invoiceId) {
     try {
@@ -1092,6 +1076,27 @@ async function checkUkrMailPayment(invoiceId) {
     }
 }
 
+// Обработка успешной оплаты TG PASING
+async function handleSuccessfulTgPasingPayment(userId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: userId });
+    if (!user || !user.tg_pasing_transaction) return false;
+
+    await usersCollection.updateOne(
+        { user_id: userId },
+        { $set: { 'tg_pasing_transaction.status': 'completed' } }
+    );
+
+    await bot.sendMessage(userId,
+        `🎉 <b>Спасибо за покупку TG PASING!</b>\n\n` +
+        `Для получения доступа к софту напишите с чеком оплаты сюда:\n` +
+        `<a href="https://t.me/igor_Potekov">https://t.me/igor_Potekov</a>`, {
+            parse_mode: 'HTML'
+        });
+
+    return true;
+}
+
 // Обработка успешной оплаты с транзакцией iCloud
 async function handleSuccessfulPayment(userId, transactionId) {
     const usersCollection = await users();
@@ -1151,28 +1156,6 @@ async function handleSuccessfulPayment(userId, transactionId) {
 
     // Перенаправляем в меню получения кодов
     await sendMyIcloudsMenu(userId);
-
-    return true;
-}
-
-// Обработка успешной оплаты TG PASING
-async function handleSuccessfulTgPasingPayment(userId) {
-    const usersCollection = await users();
-    const user = await usersCollection.findOne({ user_id: userId });
-    if (!user || !user.tg_pasing_transaction) return false;
-
-    await usersCollection.updateOne(
-        { user_id: userId },
-        { $set: { 'tg_pasing_transaction.status': 'completed' } }
-    );
-
-    // Сообщение пользователю после оплаты
-    await bot.sendMessage(userId,
-        `🎉 <b>Спасибо за покупку TG PASING!</b>\n\n` +
-        `Для получения доступа к софту напишите с чеком оплаты сюда:\n` +
-        `<a href="https://t.me/igor_Potekov">https://t.me/igor_Potekov</a>`, {
-            parse_mode: 'HTML'
-        });
 
     return true;
 }
@@ -1363,7 +1346,21 @@ setInterval(async () => {
             }
         }
 
-        // TG PASING
+        // Проверка оплаты TG PASING
+async function checkTgPasingPayment(invoiceId) {
+    try {
+        const response = await axios.get(`https://pay.crypt.bot/api/getInvoices?invoice_ids=${invoiceId}`, {
+            headers: {
+                'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN
+            }
+        });
+        return response.data.result.items[0];
+    } catch (err) {
+        console.error('Ошибка при проверке оплаты TG PASING:', err);
+        return null;
+    }
+}
+// TG PASING
 const usersWithTgPasing = await usersCollection.find({
     "tg_pasing_transaction": { $exists: true }
 }).toArray();
@@ -1602,9 +1599,7 @@ async function sendMyUkrMailsMenu(chatId) {
             inline_keyboard: buttons
         }
     });
-}
-
-// Меню поддержки
+}// Меню поддержки
 async function sendSupportMenu(chatId) {
     return bot.sendMessage(chatId,
         '🛠️ <b>Техническая поддержка</b>\n\n' +
@@ -1658,11 +1653,37 @@ bot.on('callback_query', async (callbackQuery) => {
             return sendMainMenu(chatId);
         }
 
+        // Открытие меню TG PASING
+if (data === 'tg_pasing_category') {
+    await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+    return sendTgPasingMenu(chatId);
+}
+
+// Описание функций TG PASING
+if (data === 'tg_pasing_info') {
+    await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+    return sendTgPasingInfo(chatId);
+}
+
         // Категории
         if (data === 'categories') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             return sendCategoriesMenu(chatId);
         }
+
+        if (data === 'buy_tg_pasing') {
+            const invoiceUrl = await createTgPasingInvoice(chatId);
+            if (!invoiceUrl) {
+                return bot.answerCallbackQuery(callbackQuery.id, {
+                    text: 'Ошибка при создании платежа. Попробуйте позже.',
+                    show_alert: true
+                });
+            }
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            await sendTgPasingPaymentMenu(chatId, invoiceUrl);
+            return bot.answerCallbackQuery(callbackQuery.id);
+        }
+        
 
         // Назад к категориям
         if (data === 'back_to_categories') {
@@ -1692,11 +1713,6 @@ bot.on('callback_query', async (callbackQuery) => {
         if (data === 'ukr_mail_category') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             return sendUkrMailMenu(chatId);
-        }
-
-        if (data === 'tg_pasing_category') {
-            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
-            return sendTgPasingMenu(chatId);
         }
 
         // Назад к меню почт
