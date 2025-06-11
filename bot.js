@@ -1447,6 +1447,54 @@ async function sendMyUkrMailsMenu(chatId) {
     });
 }
 
+// Мои "БОТ TG PASING"
+async function sendMyBotTgPasingMenu(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    if (!user || !user.bot_tg_pasing_transactions || Object.keys(user.bot_tg_pasing_transactions).length === 0) {
+        return bot.sendMessage(chatId,
+            '❌ У вас пока нет "БОТ TG PASING".\n' +
+            'Купите его в разделе "БОТ TG PASING"!', {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
+                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                    ]
+                }
+            });
+    }
+
+    // Check if the user has a completed transaction
+    const hasCompletedTransaction = Object.values(user.bot_tg_pasing_transactions).some(t => t.status === 'completed');
+
+    if (!hasCompletedTransaction) {
+        return bot.sendMessage(chatId,
+            '❌ У вас нет активной покупки "БОТ TG PASING".\n' +
+            'Пожалуйста, завершите покупку или обратитесь в поддержку.', {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🆘 Поддержка', callback_data: 'support' }],
+                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                    ]
+                }
+            });
+    }
+
+    // If the user has a completed transaction, send the bot information
+    return bot.sendMessage(chatId,
+        '🤖 <b>Ваш "БОТ TG PASING" активирован!</b>\n\n' +
+        'Пожалуйста, напишите @igor_Potekov и предоставьте скриншот списания для получения бота.', {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🆘 Поддержка', callback_data: 'support' }],
+                    [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                ]
+            }
+        });
+}
+
 // Меню поддержки
 async function sendSupportMenu(chatId) {
     return bot.sendMessage(chatId,
@@ -1463,7 +1511,28 @@ async function sendSupportMenu(chatId) {
         });
 }
 
-// Обработка callback-запросов
+// Меню оплаты "БОТ TG PASING"
+async function sendBotTgPasingPaymentMenu(chatId, invoiceUrl) {
+    const amount = 15;
+
+    const text = `💳 <b>Оплата "БОТ TG PASING"</b>\n\n` +
+        `Сумма: <b>${amount} USDT</b>\n\n` +
+        `Нажмите кнопку для оплаты:`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_bot_tg_pasing_menu' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
+// Обработчик callback-запросов
 bot.on('callback_query', async (callbackQuery) => {
     const chatId = callbackQuery.message.chat.id;
     const data = callbackQuery.data;
@@ -1539,6 +1608,12 @@ bot.on('callback_query', async (callbackQuery) => {
             return sendUkrMailMenu(chatId);
         }
 
+        // Категория "БОТ TG PASING"
+        if (data === 'bot_tg_pasing_category') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendBotTgPasingMenu(chatId);
+        }
+
         // Назад к меню почт
         if (data === 'back_to_emails_menu') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
@@ -1563,6 +1638,12 @@ bot.on('callback_query', async (callbackQuery) => {
             return sendUkrMailMenu(chatId);
         }
 
+        // Назад к меню "БОТ TG PASING"
+        if (data === 'back_to_bot_tg_pasing_menu') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendBotTgPasingMenu(chatId);
+        }
+
         // Купить почту iCloud
         if (data === 'buy_email') {
             const emailsCount = await (await emails()).countDocuments();
@@ -1576,6 +1657,21 @@ bot.on('callback_query', async (callbackQuery) => {
             return sendQuantityMenu(chatId);
         }
 
+        // Купить "БОТ TG PASING"
+        if (data === 'buy_bot_tg_pasing') {
+            const invoiceUrl = await createBotTgPasingInvoice(chatId);
+
+            if (!invoiceUrl) {
+                return bot.answerCallbackQuery(callbackQuery.id, {
+                    text: 'Ошибка при создании платежа. Попробуйте позже.',
+                    show_alert: true
+                });
+            }
+
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            await sendBotTgPasingPaymentMenu(chatId, invoiceUrl);
+            return bot.answerCallbackQuery(callbackQuery.id);
+        }
 
         // Купить firstmail
         if (data === 'buy_firstmail') {
@@ -1742,6 +1838,12 @@ bot.on('callback_query', async (callbackQuery) => {
             return sendMyUkrMailsMenu(chatId);
         }
 
+        // Мои "БОТ TG PASING"
+        if (data === 'my_bot_tg_pasing') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendMyBotTgPasingMenu(chatId);
+        }
+
         // Мои icloud
         if (data === 'my_iclouds') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
@@ -1766,7 +1868,7 @@ bot.on('callback_query', async (callbackQuery) => {
             return;
         }
 
-        // Показываем выбранную usa mail
+       // Добавим обработку для показа USA почт
         if (data.startsWith('usa_mail_show_')) {
             const emailpass = data.replace('usa_mail_show_', '');
             await bot.sendMessage(chatId,
@@ -1784,7 +1886,7 @@ bot.on('callback_query', async (callbackQuery) => {
             return;
         }
 
-        // Показываем выбранную ukr mail
+        // Добавим обработку для показа UKR почт
         if (data.startsWith('ukr_mail_show_')) {
             const emailpass = data.replace('ukr_mail_show_', '');
             await bot.sendMessage(chatId,
@@ -1918,7 +2020,8 @@ bot.onText(/\/start/, async (msg) => {
                 invitedBy: null,
                 hasDiscount: false,
                 hasUkBundle: false,
-                canGetUkBundle: false
+                canGetUkBundle: false,
+                bot_tg_pasing_transactions: {}
             }
         },
         { upsert: true }
@@ -2156,6 +2259,7 @@ bot.onText(/\/user_stats/, async (msg) => {
     // Показываем последних 5 пользователей
     const recentUsers = await usersCollection.find()
         .sort({ first_seen: -1 })
+        .limit({ first_seen: -1 })
         .limit(5)
         .toArray();
 
@@ -2260,7 +2364,7 @@ bot.onText(/\/broadcast/, async (msg) => {
 });
 
 // Быстрая текстовая рассылка
-bot.onText(/\/broadcast_text (.+)/, async (msg, match) => {
+bot.onText(/\/broadcast_text (.+)/, async (msg) => {
     if (!isAdmin(msg.from.id)) {
         return bot.sendMessage(msg.chat.id, '❌ Эта команда доступна только администраторам');
     }
@@ -2381,6 +2485,418 @@ async function showSelectedMail(chatId, data, mailType) {
         }
     );
 }
+
+// Запуск сервера и бота
+(async () => {
+    try {
+        // Установка вебхука при запуске на Render
+        if (process.env.RENDER_EXTERNAL_URL) {
+            const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/webhook`;
+            await bot.setWebHook(webhookUrl);
+            console.log(`Webhook установлен: ${webhookUrl}`);
+        } else {
+            console.log('Running in development mode');
+        }
+
+        // Запуск сервера
+        app.listen(PORT, () => {
+            console.log(`Сервер запущен на порту ${PORT}`);
+            console.log('💎 Бот успешно запущен и готов к работе!');
+        });
+    } catch (err) {
+        console.error('Ошибка при запуске:', err);
+        process.exit(1);
+    }
+})();
+// Function to send the "My Purchases" menu with detailed explanations
+async function sendMyPurchasesMenu(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    const hasIcloud = user && user.emails && user.emails.length > 0;
+    const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
+    const hasUsaMail = user && user.usa_mails && user.usa_mails.length > 0;
+    const hasUkrMail = user && user.ukr_mails && user.ukr_mails.length > 0;
+    const hasBotTgPasing = user && user.bot_tg_pasing_transactions && Object.values(user.bot_tg_pasing_transactions).some(t => t.status === 'completed');
+
+    let menuText = '📦 <b>Ваши покупки:</b> 📦\n\n';
+
+    if (hasIcloud) {
+        menuText += '📧 <b>ICLOUD:</b> У вас есть приобретенные почты ICLOUD. Вы можете посмотреть их в соответствующем разделе.\n';
+    }
+
+    if (hasFirstmail) {
+        menuText += '🔥 <b>FIRSTMAIL:</b> У вас есть приобретенные почты FIRSTMAIL. Вы можете посмотреть их в соответствующем разделе.\n';
+    }
+
+    if (hasUsaMail) {
+        menuText += '🇺🇸 <b>USA FIRSTMAIL:</b> У вас есть приобретенные аккаунты USA FIRSTMAIL. Вы можете посмотреть их в соответствующем разделе.\n';
+    }
+
+    if (hasUkrMail) {
+        menuText += '🇺🇦 <b>UKR FIRSTMAIL:</b> У вас есть приобретенные аккаунты UKR FIRSTMAIL. Вы можете посмотреть их в соответствующем разделе.\n';
+    }
+
+    if (hasBotTgPasing) {
+        menuText += '🤖 <b>БОТ TG PASING:</b> Вы приобрели "БОТ TG PASING". Обратитесь к @igor_Potekov со скриншотом списания для получения бота.\n';
+    }
+
+    if (!hasIcloud && !hasFirstmail && !hasUsaMail && !hasUkrMail && !hasBotTgPasing) {
+        menuText = '❌ У вас пока нет покупок.\nНажмите "КАТЕГОРИИ" чтобы сделать покупку';
+    }
+
+    const buttons = [];
+    if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
+    if (hasFirstmail) buttons.push([{ text: '🔥 Мои FIRSTMAIL 🔥', callback_data: 'my_firstmails' }]);
+    if (hasUsaMail) buttons.push([{ text: '🇺🇸 Мои USA FIRSTMAIL 🇺🇸', callback_data: 'my_usa_mails' }]);
+    if (hasUkrMail) buttons.push([{ text: '🇺🇦 Мои UKR FIRSTMAIL 🇺🇦', callback_data: 'my_ukr_mails' }]);
+    if (hasBotTgPasing) buttons.push([{ text: '🤖 Мой БОТ TG PASING 🤖', callback_data: 'my_bot_tg_pasing' }]);
+    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: buttons.length > 0 ? { inline_keyboard: buttons } : {
+            inline_keyboard: [
+                [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, menuText, options);
+}// Expanded function to send the "Support" menu with more detailed information
+async function sendSupportMenu(chatId) {
+    let supportText = '🛠️ <b>Техническая поддержка</b>\n\n';
+    supportText += 'Если у вас возникли какие-либо вопросы или проблемы с ботом, пожалуйста, свяжитесь с нашей службой поддержки.\n';
+    supportText += 'Мы постараемся решить вашу проблему как можно быстрее.\n\n';
+    supportText += '<b>Контактная информация:</b>\n';
+    supportText += '• Менеджер: @igor_Potekov\n\n';
+    supportText += '<b>Часто задаваемые вопросы:</b>\n';
+    supportText += '• Как получить код от почты?\n';
+    supportText += '  - Перейдите в раздел "Мои покупки" и выберите нужную почту.\n';
+    supportText += '• Как купить почту?\n';
+    supportText += '  - Перейдите в раздел "Категории" и выберите нужную категорию.\n';
+    supportText += '• У меня не получается оплатить, что делать?\n';
+    supportText += '  - Обратитесь к менеджеру @igor_Potekov, он поможет вам с оплатой.\n\n';
+    supportText += 'Мы всегда готовы помочь вам!';
+
+    return bot.sendMessage(chatId, supportText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+            ]
+        }
+    });
+}
+
+// Function to handle "get code" logic with more details
+async function handleGetCode(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    if (!user || !user.emails || user.emails.length === 0) {
+        return bot.answerCallbackQuery(callbackQuery.id, {
+            text: 'У вас нет купленных почт. Сначала купите почту.',
+            show_alert: true
+        });
+    }
+
+    // Send a detailed message about the process
+    let getCodeText = '🔑 <b>Получение кода TikTok</b> 🔑\n\n';
+    getCodeText += 'Чтобы получить код TikTok, выберите почту из списка ниже.\n';
+    getCodeText += 'Бот проверит почту и предоставит вам код, если он будет найден.\n\n';
+    getCodeText += '<b>Важно:</b>\n';
+    getCodeText += '• Убедитесь, что вы запросили код TikTok на сайте TikTok.\n';
+    getCodeText += '• Проверка кода может занять некоторое время (до 30 секунд).\n';
+    getCodeText += '• Если код не найден, попробуйте еще раз через несколько минут.\n\n';
+    getCodeText += 'Выберите почту:';
+
+    const buttons = user.emails.map(email => [{ text: email, callback_data: `email_${email}` }]);
+    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    };
+
+    return bot.sendMessage(chatId, getCodeText, options);
+}
+
+// Define sendMyIcloudsMenu, sendMyFirstmailsMenu, and sendSupportMenu here
+async function sendMyIcloudsMenu(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    if (!user || !user.emails || user.emails.length === 0) {
+        return bot.sendMessage(chatId,
+            '❌ У вас пока нет купленных ICLOUD.\n' +
+            'Купите их в разделе ICLOUD!', {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
+                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                    ]
+                }
+            });
+    }
+
+    const buttons = user.emails.map(email => [{ text: email, callback_data: `email_${email}` }]);
+    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+    return bot.sendMessage(chatId, '📧 <b>Ваши ICLOUD почты:</b>📧', {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
+}
+
+async function sendMyFirstmailsMenu(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    if (!user || !user.firstmails || user.firstmails.length === 0) {
+        return bot.sendMessage(chatId,
+            '❌ У вас пока нет фирстмаилов.\n' +
+            'Купите их в разделе FIRSTMAIL!', {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
+                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                    ]
+                }
+            });
+    }
+
+    const buttons = user.firstmails.map(emailpass => [{ text: emailpass, callback_data: `firstmail_show_${emailpass}` }]);
+    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+    return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b> 🔥', {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
+}
+
+async function sendSupportMenu(chatId) {
+    return bot.sendMessage(chatId,
+        '🛠️ <b>Техническая поддержка</b>\n\n' +
+        'По всем вопросам обращайтесь к менеджеру:\n' +
+        '@igor_Potekov\n\n' +
+        'Мы решим любую вашу проблему!', {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                ]
+            }
+        });
+}
+
+// Improved error handling and logging
+bot.on('webhook_error', (error) => {
+    console.error('Webhook error:', error);
+});
+
+bot.on('polling_error', (error) => {
+    console.error('Polling error:', error);
+});
+
+// Admin command to send a custom message to a specific user
+bot.onText(/\/send_message (.+)/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) return;
+
+    const args = match[1].split(' ');
+    const userId = parseInt(args[0]);
+    const message = args.slice(1).join(' ');
+
+    if (isNaN(userId) || !message) {
+        return bot.sendMessage(msg.chat.id, 'Использование: /send_message [user_id] [сообщение]');
+    }
+
+    try {
+        await bot.sendMessage(userId, message, { parse_mode: 'HTML' });
+        bot.sendMessage(msg.chat.id, `✅ Сообщение отправлено пользователю ${userId}`);
+    } catch (error) {
+        console.error('Error sending message:', error);
+        bot.sendMessage(msg.chat.id, `❌ Ошибка при отправке сообщения пользователю ${userId}: ${error.message}`);
+    }
+});
+
+// Admin command to get user information
+bot.onText(/\/get_user (.+)/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) return;
+
+    const userId = parseInt(match[1]);
+
+    if (isNaN(userId)) {
+        return bot.sendMessage(msg.chat.id, 'Использование: /get_user [user_id]');
+    }
+
+    try {
+        const usersCollection = await users();
+        const user = await usersCollection.findOne({ user_id: userId });
+
+        if (!user) {
+            return bot.sendMessage(msg.chat.id, `❌ Пользователь с ID ${userId} не найден`);
+        }
+
+        let userInfo = `<b>Информация о пользователе ${userId}:</b>\n\n`;
+        userInfo += `ID: <code>${user.user_id}</code>\n`;
+        userInfo += `Username: @${user.username || 'нет'}\n`;
+        userInfo += `First Name: ${user.first_name || 'нет'}\n`;
+        userInfo += `Last Name: ${user.last_name || 'нет'}\n`;
+        userInfo += `First Seen: ${user.first_seen.toLocaleString()}\n`;
+        userInfo += `Last Seen: ${user.last_seen?.toLocaleString() || 'никогда'}\n`;
+        userInfo += `Referrals: ${user.referrals?.length || 0}\n`;
+        userInfo += `Invited By: ${user.invitedBy || 'нет'}\n`;
+        userInfo += `Has Discount: ${user.hasDiscount ? 'да' : 'нет'}\n`;
+        userInfo += `Has UK Bundle: ${user.hasUkBundle ? 'да' : 'нет'}\n`;
+
+        bot.sendMessage(msg.chat.id, userInfo, { parse_mode: 'HTML' });
+
+    } catch (error) {
+        console.error('Error getting user info:', error);
+        bot.sendMessage(msg.chat.id, `❌ Ошибка при получении информации о пользователе ${userId}: ${error.message}`);
+    }
+});
+
+// Function to handle the logic for sending a message to a user asking for feedback
+async function askForFeedback(chatId) {
+    try {
+        await bot.sendMessage(chatId,
+            '📢 <b>Нам важно ваше мнение!</b>\n\n' +
+            'Пожалуйста, поделитесь своими впечатлениями о работе бота. Что вам нравится, что можно улучшить?\n\n' +
+            'Ваш отзыв поможет нам сделать бота лучше!', {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    force_reply: true,
+                    selective: true // Only show the reply keyboard to the user who triggered the command
+                }
+            });
+    } catch (error) {
+        console.error('Error asking for feedback:', error);
+    }
+}
+
+// Function to schedule periodic feedback requests
+function scheduleFeedbackRequests() {
+    // Schedule feedback requests every 7 days
+    setInterval(async () => {
+        const usersCollection = await users();
+        const allUsers = await usersCollection.find({}).toArray();
+
+        for (const user of allUsers) {
+            try {
+                // Check if the user has been asked for feedback recently (e.g., in the last 6 days)
+                const lastFeedbackRequest = user.lastFeedbackRequest || new Date(0); // Default to a very old date
+                const timeSinceLastRequest = Date.now() - lastFeedbackRequest.getTime();
+                const daysSinceLastRequest = timeSinceLastRequest / (1000 * 60 * 60 * 24);
+
+                if (daysSinceLastRequest >= 7) {
+                    await askForFeedback(user.user_id);
+
+                    // Update the user's lastFeedbackRequest timestamp
+                    await usersCollection.updateOne(
+                        { user_id: user.user_id },
+                        { $set: { lastFeedbackRequest: new Date() } }
+                    );
+                }
+            } catch (error) {
+                console.error('Error scheduling feedback request for user:', error);
+            }
+        }
+    }, 7 * 24 * 60 * 60 * 1000); // Run every 7 days
+}
+
+// Start scheduling feedback requests
+scheduleFeedbackRequests();
+
+// Listen for feedback replies
+bot.on('reply_to_message', async (msg, match) => {
+    const chatId = msg.chat.id;
+    const replyToMessage = msg.reply_to_message;
+
+    // Check if the reply is to the feedback request
+    if (replyToMessage && replyToMessage.text.includes('Пожалуйста, поделитесь своими впечатлениями о работе бота')) {
+        const feedbackText = msg.text;
+
+        // Log the feedback (you can save it to a database or send it to an admin)
+        console.log(`Feedback from user ${chatId}: ${feedbackText}`);
+
+        // Send a thank you message to the user
+        await bot.sendMessage(chatId,
+            '🎉 <b>Спасибо за ваш отзыв!</b>\n\n' +
+            'Мы обязательно учтем ваше мнение при дальнейшем развитии бота.', {
+                parse_mode: 'HTML'
+            });
+    }
+});
+
+// Function to send a message with the bot's terms of service
+async function sendTermsOfService(chatId) {
+    const termsText = '<b>Условия использования бота:</b>\n\n' +
+        '1. Бот предоставляется "как есть". Мы не несем ответственности за любые убытки, возникшие в результате использования бота.\n' +
+        '2. Мы оставляем за собой право изменять функциональность бота в любое время.\n' +
+        '3. Запрещено использовать бота для незаконной деятельности.\n' +
+        '4. Мы не несем ответственности за точность предоставляемой ботом информации.\n' +
+        '5. Используя бота, вы соглашаетесь с этими условиями.';
+
+    await bot.sendMessage(chatId, termsText, { parse_mode: 'HTML' });
+}
+
+// Listen for the /tos command
+bot.onText(/\/tos/, async (msg) => {
+    const chatId = msg.chat.id;
+    await sendTermsOfService(chatId);
+});
+
+// Function to send information about available commands
+async function sendCommandsInfo(chatId) {
+    let commandsText = '<b>Список доступных команд:</b>\n\n';
+    commandsText += '/start - Начать работу с ботом\n';
+    commandsText += '/ref_stats - Посмотреть реферальную статистику (только для администраторов)\n';
+    commandsText += '/pool_status - Посмотреть статус пула почт ICLOUD (только для администраторов)\n';
+    commandsText += '/firstmail_status - Посмотреть статус пула почт FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/usa_status - Посмотреть статус пула почт USA FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/ukr_status - Посмотреть статус пула почт UKR FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/db_status - Посмотреть статус базы данных (только для администраторов)\n';
+    commandsText += '/user_stats - Посмотреть статистику пользователей (только для администраторов)\n';
+    commandsText += '/broadcast - Отправить сообщение всем пользователям (только для администраторов)\n';
+    commandsText += '/broadcast_text [текст] - Отправить текстовое сообщение всем пользователям (только для администраторов)\n';
+    commandsText += '/add_emails [почты через запятую] - Добавить почты ICLOUD (только для администраторов)\n';
+    commandsText += '/add_first [почты:пароли через запятую] - Добавить почты FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/add_usa [почты:пароли через запятую] - Добавить почты USA FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/add_ukr [почты:пароли через запятую] - Добавить почты UKR FIRSTMAIL (только для администраторов)\n';
+    commandsText += '/send_message [user_id] [текст] - Отправить сообщение пользователю (только для администраторов)\n';
+    commandsText += '/get_user [user_id] - Получить информацию о пользователе (только для администраторов)\n';
+    commandsText += '/tos - Показать условия использования бота\n';
+    commandsText += '/help - Показать список доступных команд\n';
+    commandsText += 'Для получения помощи и поддержки, нажмите кнопку "Поддержка" в главном меню.';
+
+    return bot.sendMessage(chatId, commandsText, { parse_mode: 'HTML' });
+}
+
+// Listen for the /help command
+bot.onText(/\/help/, async (msg) => {
+    const chatId = msg.chat.id;
+    await sendCommandsInfo(chatId);
+});
+
+// Handle any other text message and respond with the help command
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+
+    // Check if the message is not a command (starts with '/') and then send help
+    if (!msg.text || !msg.text.startsWith('/')) {
+        // Send the help command to the user
+        await sendCommandsInfo(chatId);
+    }
+});
 
 // Запуск сервера и бота
 (async () => {
