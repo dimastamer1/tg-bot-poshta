@@ -1462,20 +1462,6 @@ async function sendMyBotTgPasingMenu(chatId) {
 }
 
 // Меню поддержки
-async function sendSupportMenu(chatId) {
-    return bot.sendMessage(chatId,
-        '🛠️ <b>Техническая поддержка</b>\n\n' +
-        'По всем вопросам обращайтесь к менеджеру:\n' +
-        '@igor_Potekov\n\n' +
-        'Мы решим любую вашу проблему!', {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
-                ]
-            }
-        });
-}
 
 // Меню оплаты "БОТ TG PASING"
 async function sendBotTgPasingPaymentMenu(chatId, invoiceUrl) {
