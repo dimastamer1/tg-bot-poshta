@@ -425,6 +425,7 @@ async function sendCategoriesMenu(chatId) {
             inline_keyboard: [
                 [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
                 [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
+                [{ text: `⚙️ СОФТ TG PASING`, callback_data: 'tg_parsing_category' }],
                 [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
                 [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
@@ -671,6 +672,31 @@ async function sendPaymentMenu(chatId, invoiceUrl, quantity) {
     return bot.sendMessage(chatId, text, options);
 }
 
+
+if (data === 'buy_tg_parsing') {
+    const invoiceUrl = await createTgParsingInvoice(chatId);
+    if (invoiceUrl) {
+        const text = `💳 <b>Оплата доступа к софту TG Parsing</b>\n\n` +
+            `Сумма: <b>15 USDT</b>\n\n` +
+            `Нажмите кнопку для оплаты:`;
+
+        const options = {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
+                    [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
+                ]
+            }
+        };
+
+        await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+        return bot.sendMessage(chatId, text, options);
+    } else {
+        return bot.sendMessage(chatId, '❌ Ошибка при создании инвойса, обратитесь в поддержку @igor_Potekov');
+    }
+}
+
 // Меню оплаты FIRSTMAIL
 async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
     const totalAmount = (0.082 * quantity).toFixed(2);
@@ -864,6 +890,48 @@ async function createUsaMailInvoice(userId, quantity) {
         return response.data.result.pay_url;
     } catch (err) {
         console.error('Ошибка при создании инвойса USA FIRSTMAIL:', err.response?.data || err.message);
+        return null;
+    }
+}
+
+async function createTgParsingInvoice(userId) {
+    try {
+        const transactionId = `buy_tg_parsing_${userId}_${Date.now()}`;
+        const amount = 15; // Цена софта
+
+        const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
+            asset: 'USDT',
+            amount: amount,
+            description: `Покупка доступа к софту TG Parsing`,
+            hidden_message: 'Спасибо за покупку!',
+            paid_btn_name: 'openBot',
+            paid_btn_url: 'https://t.me/ubtshope_bot',
+            payload: transactionId
+        }, {
+            headers: {
+                'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const usersCollection = await users();
+        await usersCollection.updateOne(
+            { user_id: userId },
+            {
+                $set: {
+                    [`tg_parsing_transactions.${transactionId}`]: {
+                        invoiceId: response.data.result.invoice_id,
+                        status: 'pending',
+                        timestamp: Date.now()
+                    }
+                }
+            },
+            { upsert: true }
+        );
+
+        return response.data.result.pay_url;
+    } catch (err) {
+        console.error('Ошибка при создании инвойса для TG Parsing:', err.response?.data || err.message);
         return null;
     }
 }
@@ -1146,6 +1214,30 @@ async function handleSuccessfulUsaMailPayment(userId, transactionId) {
     return true;
 }
 
+async function handleSuccessfulTgParsingPayment(userId, transactionId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: userId });
+
+    if (!user || !user.tg_parsing_transactions || !user.tg_parsing_transactions[transactionId]) {
+        return false;
+    }
+
+    // Обновляем статус транзакции
+    await usersCollection.updateOne(
+        { user_id: userId },
+        { $set: { [`tg_parsing_transactions.${transactionId}.status`]: 'completed' } }
+    );
+
+    // Отправляем сообщение пользователю
+    await bot.sendMessage(userId,
+        `🎉 <b>Спасибо за покупку доступа к софту TG Parsing!</b>\n\n` +
+        `Для получения софта и дальнейших инструкций, пожалуйста, напишите @igor_Potekov и предоставьте скриншот списания средств.`,
+        { parse_mode: 'HTML' }
+    );
+
+    return true;
+}
+
 // Обработка успешной оплаты UKR FIRSTMAIL
 async function handleSuccessfulUkrMailPayment(userId, transactionId) {
     const usersCollection = await users();
@@ -1291,6 +1383,29 @@ setInterval(async () => {
                 }
             }
         }
+
+// TG Parsing
+const usersWithTgParsing = await usersCollection.find({
+    "tg_parsing_transactions": { $exists: true }
+}).toArray();
+
+for (const user of usersWithTgParsing) {
+    for (const [transactionId, transaction] of Object.entries(user.tg_parsing_transactions)) {
+        if (transaction.status === 'pending' && transaction.invoiceId) {
+            const invoice = await checkPayment(transaction.invoiceId); // Используем существующую checkPayment, она универсальная
+
+            if (invoice?.status === 'paid') {
+                await handleSuccessfulTgParsingPayment(user.user_id, transactionId);
+            } else if (invoice?.status === 'expired') {
+                await usersCollection.updateOne(
+                    { user_id: user.user_id },
+                    { $set: { [`tg_parsing_transactions.${transactionId}.status`]: 'expired' } }
+                );
+            }
+        }
+    }
+}
+
     } catch (err) {
         console.error('Ошибка при проверке платежей:', err);
     }
@@ -1447,6 +1562,38 @@ async function sendMyUkrMailsMenu(chatId) {
     });
 }
 
+async function sendTgParsingMenu(chatId) {
+    const text = `⚙️ <b>СОФТ TG PASING</b>\n\n` +
+        `⭐️Приобретите доступ к нашему мощному софту для парсинга Telegram!⭐️\n\n` +
+        `Цена: <b>15 USDT</b> (единоразово)\n\n` +
+        `После оплаты вы получите ссылку на связь с менеджером для получения софта.`+
+        `<b>СКАЖУ КАКИЕ ФУНКЦИИ В СОФТА</b>\n\n` +
+        `1.рассылка бо личкам`+
+        `2.рассылка по группам`+
+        `3.неограниченое кол-во аккаунтов, для спама (хоть 1000 добавте)`+
+        `4.можно брать юзернеймы с группы любой, на автомате (Не нужно самому вписивать каждый юзер для рассылки)`+
+        `5.можно брать юзеры с закрытой группы`+
+        `6.можно смотреть кому софт уже писал`+
+        `7.можно добавлять крео, для рассылки, голосовые, картинки, текста`+
+        `8.обход блоков, до 70 писем людям на 1 аккаунт!, при правельной настройки которую мы вам дадим!\n\n`+
+        `<b>🛑ДАВАЙТЕ ЕЩЕ ПЕРЕЙДЕМ К ОБНОВЛЕНИЕМ И ТАК ДАЛЕЕ🛑</b>\n\n`+
+        `1.прямая поддержка`+
+        `2.если бот будет обновляться. вам уже FREE`+
+        `<b>‼️ЧТОБЫ ЗАПУСТИТЬ СОФТ ВАМ БУДЕТ НУЖЕН ПК ИЛИ НОУТ!‼️</b>\n\n`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '💰 КУПИТЬ СОФТ 💰', callback_data: 'buy_tg_parsing' }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
 // Меню поддержки
 async function sendSupportMenu(chatId) {
     return bot.sendMessage(chatId,
@@ -1501,6 +1648,11 @@ bot.on('callback_query', async (callbackQuery) => {
         if (data === 'back_to_main') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             return sendMainMenu(chatId);
+        }
+
+        if (data === 'tg_parsing_category') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendTgParsingMenu(chatId);
         }
 
         // Категории
