@@ -1296,39 +1296,6 @@ setInterval(async () => {
 }, 10000); // Проверяем каждые 10 секунд (было 20)
 
 // Мои покупки (iCloud + FIRSTMAIL + USA + UKR)
-async function sendMyPurchasesMenu(chatId) {
-    const usersCollection = await users();
-    const user = await usersCollection.findOne({ user_id: chatId });
-
-    const hasIcloud = user && user.emails && user.emails.length > 0;
-    const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
-    const hasUsaMail = user && user.usa_mails && user.usa_mails.length > 0;
-    const hasUkrMail = user && user.ukr_mails && user.ukr_mails.length > 0;
-
-    const buttons = [];
-    if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
-    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
-
-    if (!hasIcloud && !hasFirstmail && !hasUsaMail && !hasUkrMail) {
-        return bot.sendMessage(chatId,
-            '❌ У вас пока нет покупок.\n' +
-            'Нажмите "КАТЕГОРИИ" чтобы сделать покупку', {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
-                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
-                    ]
-                }
-            });
-    }
-
-    return bot.sendMessage(chatId, '📦 <b>Ваши покупки:</b> 📦', {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: buttons
-        }
-    });
-}
 
 // Мои ICLOUD почты (и возможность получить код)
 async function sendMyIcloudsMenu(chatId) {
