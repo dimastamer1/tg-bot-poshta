@@ -4,7 +4,7 @@ import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import config from './config.js';
-import { connect, emails, users, firstmails, usaMails, ukrMails } from './db.js';
+import { connect, emails, users, firstmails, usaMails, ukrMails, gmailKeys } from './db.js';
 
 // Проверка подключения при старте
 connect().then(() => {
