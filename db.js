@@ -27,17 +27,22 @@ async function firstmails() {
 
 // Получить коллекцию почт USA FIRSTMAIL
 async function usaMails() {
-    return (await connect()).collection('usa_mails');
+  return (await connect()).collection('usa_mails');
 }
 
 // Получить коллекцию почт UKR FIRSTMAIL
 async function ukrMails() {
-    return (await connect()).collection('ukr_mails');
+  return (await connect()).collection('ukr_mails');
 }
 
 // Получить коллекцию пользователей
 async function users() {
   return (await connect()).collection('users');
+}
+
+// Получить коллекцию аккаунтов USA GMAIL KEY 24+H
+async function gmailKeys() {
+  return (await connect()).collection('gmail_keys');
 }
 
 // Получить все почты iCloud
@@ -54,14 +59,20 @@ async function readFirstmailsPool() {
 
 // Получить все почты USA FIRSTMAIL (email:password)
 async function readUsaMailsPool() {
-    const usaMailsList = await (await usaMails()).find().toArray();
-    return { usa_mails: usaMailsList.map(e => `${e.email}:${e.password}`) };
+  const usaMailsList = await (await usaMails()).find().toArray();
+  return { usa_mails: usaMailsList.map(e => `${e.email}:${e.password}`) };
 }
 
 // Получить все почты UKR FIRSTMAIL (email:password)
 async function readUkrMailsPool() {
-    const ukrMailsList = await (await ukrMails()).find().toArray();
-    return { ukr_mails: ukrMailsList.map(e => `${e.email}:${e.password}`) };
+  const ukrMailsList = await (await ukrMails()).find().toArray();
+  return { ukr_mails: ukrMailsList.map(e => `${e.email}:${e.password}`) };
+}
+
+// Получить все аккаунты USA GMAIL KEY 24+H (сырой формат)
+async function readGmailKeysPool() {
+  const gmailKeysList = await (await gmailKeys()).find().toArray();
+  return { gmail_keys: gmailKeysList.map(e => e.raw) };
 }
 
 // Добавить почты iCloud (перезаписывает пул)
@@ -85,45 +96,65 @@ async function writeFirstmailsPool(data) {
 
 // Добавить почты USA FIRSTMAIL (перезаписывает пул)
 async function writeUsaMailsPool(data) {
-    const usaMailsCollection = await usaMails();
-    await usaMailsCollection.deleteMany({});
-    await usaMailsCollection.insertMany(
-        data.usa_mails.map(str => {
-            const [email, password] = str.split(':');
-            return { email: email.trim(), password: (password || '').trim() };
-        })
-    );
+  const usaMailsCollection = await usaMails();
+  await usaMailsCollection.deleteMany({});
+  await usaMailsCollection.insertMany(
+    data.usa_mails.map(str => {
+      const [email, password] = str.split(':');
+      return { email: email.trim(), password: (password || '').trim() };
+    })
+  );
 }
 
 // Добавить почты UKR FIRSTMAIL (перезаписывает пул)
 async function writeUkrMailsPool(data) {
-    const ukrMailsCollection = await ukrMails();
-    await ukrMailsCollection.deleteMany({});
-    await ukrMailsCollection.insertMany(
-        data.ukr_mails.map(str => {
-            const [email, password] = str.split(':');
-            return { email: email.trim(), password: (password || '').trim() };
-        })
-    );
+  const ukrMailsCollection = await ukrMails();
+  await ukrMailsCollection.deleteMany({});
+  await ukrMailsCollection.insertMany(
+    data.ukr_mails.map(str => {
+      const [email, password] = str.split(':');
+      return { email: email.trim(), password: (password || '').trim() };
+    })
+  );
+}
+
+// Добавить аккаунты USA GMAIL KEY 24+H (перезаписывает пул)
+async function writeGmailKeysPool(data) {
+  const gmailKeysCollection = await gmailKeys();
+  await gmailKeysCollection.deleteMany({});
+  await gmailKeysCollection.insertMany(
+    data.gmail_keys.map(str => {
+      // Формат: email|login|password|US|KEY
+      const [email, login, password, country, key] = str.split('|');
+      return {
+        email: (email || '').trim(),
+        login: (login || '').trim(),
+        password: (password || '').trim(),
+        country: (country || '').trim(),
+        key: (key || '').trim(),
+        raw: str.trim()
+      };
+    })
+  );
 }
 
 // Получить данные пользователей
 async function readDB() {
   const usersCollection = await users();
   const usersList = await usersCollection.find().toArray();
-  
+
   const result = { users: {} };
   usersList.forEach(user => {
     result.users[user.user_id] = user;
   });
-  
+
   return result;
 }
 
 // Обновить данные пользователя
 async function writeDB(data) {
   const usersCollection = await users();
-  
+
   for (const [userId, userData] of Object.entries(data.users)) {
     await usersCollection.updateOne(
       { user_id: Number(userId) },
@@ -134,20 +165,23 @@ async function writeDB(data) {
 }
 
 export {
-    connect,
-    emails,
-    users,
-    firstmails,
-    usaMails,
-    ukrMails,
-    readEmailsPool,
-    writeEmailsPool,
-    readFirstmailsPool,
-    writeFirstmailsPool,
-    readUsaMailsPool,
-    writeUsaMailsPool,
-    readUkrMailsPool,
-    writeUkrMailsPool,
-    readDB,
-    writeDB
+  connect,
+  emails,
+  users,
+  firstmails,
+  usaMails,
+  ukrMails,
+  gmailKeys,
+  readEmailsPool,
+  writeEmailsPool,
+  readFirstmailsPool,
+  writeFirstmailsPool,
+  readUsaMailsPool,
+  writeUsaMailsPool,
+  readUkrMailsPool,
+  writeUkrMailsPool,
+  readGmailKeysPool,
+  writeGmailKeysPool,
+  readDB,
+  writeDB
 };

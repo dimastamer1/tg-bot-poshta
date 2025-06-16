@@ -412,6 +412,7 @@ async function sendCategoriesMenu(chatId) {
     const firstmailCount = await (await firstmails()).countDocuments();
     const usaMailCount = await (await usaMails()).countDocuments();
     const ukrMailCount = await (await ukrMails()).countDocuments();
+    const gmailKeyCount = await (await gmailKeys()).countDocuments();
 
     const text = `📂 <b>КАТЕГОРИИ</b>\n\n` +
         `В данном меню вы можете выбрать какие, почты или же аккаунты хотите купить\n\n`+
@@ -426,6 +427,7 @@ async function sendCategoriesMenu(chatId) {
                 [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
                 [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
                 [{ text: '🤖 СОФТ TG PASING', callback_data: 'tg_pasing_category' }],
+                [{ text: `♻️ АККАУНТЫ USA GMAIL KEY 24+H (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
                 [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
                 [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
@@ -529,6 +531,31 @@ async function sendTgPasingInfo(chatId) {
             ]
         }
     });
+}
+
+async function sendGmailKeyMenu(chatId) {
+    const gmailKeyCount = await (await gmailKeys()).countDocuments();
+
+    const text = `🇺🇸 <b>АККАУНТЫ USA GMAIL KEY 24+H (${gmailKeyCount}шт)</b>\n\n` +
+        `<b>В данном меню вы можете:</b>\n` +
+        `✅ • Купить аккаунты GMAIL KEY 24+H для работы и спама\n\n` +
+        `Цена: 11рубей <b>0.143 USDT</b> за 1 аккаунт\n\n` +
+        `Выберите действие:`+
+        `Формат - Почта | Логин | Пароль | Geo | key \n\n` +
+        `<b>КАК ЗАЙТИ В АККАУНТ</b>?` +
+        `✅Скачиваем google auntificator, вставляем ключ который выдаеться в конце аккаунта, и входим, через забыл пароль сьросить его или войти через аунтификатор!`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '💰 КУПИТЬ АККАУНТ USA GMAIL KEY 💰', callback_data: 'buy_gmail_key' }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
 }
 
 // Меню FIRSTMAIL с инлайн-кнопками
@@ -691,6 +718,35 @@ async function sendUsaMailQuantityMenu(chatId) {
     return bot.sendMessage(chatId, text, options);
 }
 
+async function sendGmailKeyQuantityMenu(chatId) {
+    const availableCount = await (await gmailKeys()).countDocuments();
+    const maxAvailable = Math.min(availableCount, 10);
+
+    const quantityButtons = [];
+    for (let i = 1; i <= maxAvailable; i++) {
+        quantityButtons.push({ text: `${i}`, callback_data: `gmail_key_quantity_${i}` });
+    }
+
+    const rows = [];
+    for (let i = 0; i < quantityButtons.length; i += 5) {
+        rows.push(quantityButtons.slice(i, i + 5));
+    }
+    rows.push([{ text: '🔙 Назад', callback_data: 'gmail_key_category' }]);
+
+    const text = `📦 <b>Выберите количество аккаунтов GMAIL KEY, которое хотите приобрести</b>\n\n` +
+        `Доступно: <b>${maxAvailable}</b> аккаунтов\n` +
+        `Цена: <b>0.143 USDT</b> за 1 аккаунт`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: rows
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
 // Меню выбора количества почт UKR FIRSTMAIL
 async function sendUkrMailQuantityMenu(chatId) {
     const availableCount = await (await ukrMails()).countDocuments();
@@ -756,6 +812,26 @@ async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
             inline_keyboard: [
                 [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_firstmail_quantity_menu' }]
+            ]
+        }
+    };
+
+    return bot.sendMessage(chatId, text, options);
+}
+
+async function sendGmailKeyPaymentMenu(chatId, invoiceUrl, quantity) {
+    const totalAmount = (0.143 * quantity).toFixed(3);
+
+    const text = `💳 <b>Оплата ${quantity} аккаунтов USA GMAIL KEY</b>\n\n` +
+        `Сумма: <b>${totalAmount} USDT</b>\n\n` +
+        `Нажмите кнопку для оплаты:`;
+
+    const options = {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '✅ ОПЛАТИТЬ ЧЕРЕЗ CRYPTOBOT', url: invoiceUrl }],
+                [{ text: '🔙 Назад', callback_data: 'back_to_gmail_key_quantity_menu' }]
             ]
         }
     };
@@ -955,6 +1031,50 @@ async function createFirstmailInvoice(userId, quantity) {
     }
 }
 
+async function createGmailKeyInvoice(userId, quantity) {
+    try {
+        const transactionId = `buy_gmail_key_${userId}_${Date.now()}`;
+        const amount = 0.143 * quantity;
+
+        const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
+            asset: 'USDT',
+            amount: amount,
+            description: `Покупка ${quantity} аккаунтов USA GMAIL KEY 24+H`,
+            hidden_message: 'Спасибо за покупку!',
+            paid_btn_name: 'openBot',
+            paid_btn_url: 'https://t.me/ubtshope_bot',
+            payload: transactionId
+        }, {
+            headers: {
+                'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const usersCollection = await users();
+        await usersCollection.updateOne(
+            { user_id: userId },
+            {
+                $setOnInsert: { user_id: userId, gmail_keys: [] },
+                $set: {
+                    [`gmail_key_transactions.${transactionId}`]: {
+                        invoiceId: response.data.result.invoice_id,
+                        quantity: quantity,
+                        status: 'pending',
+                        timestamp: Date.now()
+                    }
+                }
+            },
+            { upsert: true }
+        );
+
+        return response.data.result.pay_url;
+    } catch (err) {
+        console.error('Ошибка при создании инвойса GMAIL KEY:', err.response?.data || err.message);
+        return null;
+    }
+}
+
 // Создание инвойса для USA FIRSTMAIL
 async function createUsaMailInvoice(userId, quantity) {
     try {
@@ -1077,6 +1197,21 @@ async function checkFirstmailPayment(invoiceId) {
     }
 }
 
+async function checkGmailKeyPayment(invoiceId) {
+    try {
+        const response = await axios.get(`https://pay.crypt.bot/api/getInvoices?invoice_ids=${invoiceId}`, {
+            headers: {
+                'Crypto-Pay-API-Token': CRYPTOBOT_API_TOKEN
+            }
+        });
+
+        return response.data.result.items[0];
+    } catch (err) {
+        console.error('Ошибка при проверке оплаты GMAIL KEY:', err);
+        return null;
+    }
+}
+
 // Проверка оплаты USA FIRSTMAIL
 async function checkUsaMailPayment(invoiceId) {
     try {
@@ -1143,22 +1278,30 @@ async function handleSuccessfulPayment(userId, transactionId) {
     const quantity = user.transactions[transactionId].quantity;
 
     // Получаем почты для продажи
-    const emailsToSell = await emailsCollection.aggregate([
-        { $sample: { size: quantity } }
-    ]).toArray();
+  // Получаем гарантированно только нужное количество почт и удаляем их атомарно
+  const emailsToSell = await emailsCollection.aggregate([
+    { $sample: { size: quantity } }
+]).toArray();
 
-    if (emailsToSell.length < quantity) {
-        await usersCollection.updateOne(
-            { user_id: userId },
-            { $set: { [`transactions.${transactionId}.status`]: 'failed' } }
-        );
+if (emailsToSell.length < quantity) {
+    await usersCollection.updateOne(
+        { user_id: userId },
+        { $set: { [`transactions.${transactionId}.status`]: 'failed' } }
+    );
 
-        await bot.sendMessage(userId,
-            `❌ Недостаточно почт в пуле\nОбратитесь в поддержку @igor_Potekov`,
-            { parse_mode: 'HTML' });
-        return false;
-    }
+    await bot.sendMessage(userId,
+        `❌ Недостаточно почт в пуле\nОбратитесь в поддержку @igor_Potekov`,
+        { parse_mode: 'HTML' });
+    return false;
+}
 
+// Удаляем выданные почты атомарно по их _id
+if (emailsToSell.length > 0) {
+    const bulk = emailsToSell.map(e => ({
+        deleteOne: { filter: { _id: e._id } }
+    }));
+    await emailsCollection.bulkWrite(bulk);
+}
     // Обновляем данные пользователя
     await usersCollection.updateOne(
         { user_id: userId },
@@ -1241,6 +1384,57 @@ async function handleSuccessfulFirstmailPayment(userId, transactionId) {
 
     await bot.sendMessage(userId,
         `🎉 Оплата подтверждена!\nВаши почты FIRSTMAIL:\n${firstmailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+        { parse_mode: 'HTML' });
+
+    return true;
+}
+
+async function handleSuccessfulGmailKeyPayment(userId, transactionId) {
+    const usersCollection = await users();
+    const gmailKeysCollection = await gmailKeys();
+
+    const user = await usersCollection.findOne({ user_id: userId });
+    if (!user || !user.gmail_key_transactions || !user.gmail_key_transactions[transactionId]) {
+        return false;
+    }
+
+    const quantity = user.gmail_key_transactions[transactionId].quantity;
+
+    // Получаем аккаунты для продажи
+    const gmailKeysToSell = await gmailKeysCollection.aggregate([
+        { $sample: { size: quantity } }
+    ]).toArray();
+
+    if (gmailKeysToSell.length < quantity) {
+        await usersCollection.updateOne(
+            { user_id: userId },
+            { $set: { [`gmail_key_transactions.${transactionId}.status`]: 'failed' } }
+        );
+
+        await bot.sendMessage(userId,
+            `❌ Недостаточно аккаунтов GMAIL KEY в пуле\nОбратитесь в поддержку @igor_Potekov`,
+            { parse_mode: 'HTML' });
+        return false;
+    }
+
+    await usersCollection.updateOne(
+        { user_id: userId },
+        {
+            $push: { gmail_keys: { $each: gmailKeysToSell.map(e => e.raw) } },
+            $set: {
+                [`gmail_key_transactions.${transactionId}.status`]: 'completed',
+                [`gmail_key_transactions.${transactionId}.accounts`]: gmailKeysToSell.map(e => e.raw)
+            }
+        }
+    );
+
+    // Удаляем выданные аккаунты
+    await gmailKeysCollection.deleteMany({
+        _id: { $in: gmailKeysToSell.map(e => e._id) }
+    });
+
+    await bot.sendMessage(userId,
+        `🎉 Оплата подтверждена!\nВаши аккаунты:\n${gmailKeysToSell.map(e => e.raw).join('\n')}`,
         { parse_mode: 'HTML' });
 
     return true;
@@ -1413,6 +1607,28 @@ for (const user of usersWithTgPasing) {
     }
 }
 
+// GMAIL KEY
+const usersWithGmailKey = await usersCollection.find({
+    "gmail_key_transactions": { $exists: true }
+}).toArray();
+
+for (const user of usersWithGmailKey) {
+    for (const [transactionId, transaction] of Object.entries(user.gmail_key_transactions)) {
+        if (transaction.status === 'pending' && transaction.invoiceId) {
+            const invoice = await checkGmailKeyPayment(transaction.invoiceId);
+
+            if (invoice?.status === 'paid') {
+                await handleSuccessfulGmailKeyPayment(user.user_id, transactionId);
+            } else if (invoice?.status === 'expired') {
+                await usersCollection.updateOne(
+                    { user_id: user.user_id },
+                    { $set: { [`gmail_key_transactions.${transactionId}.status`]: 'expired' } }
+                );
+            }
+        }
+    }
+}
+
         // FIRSTMAIL
         const usersWithFirstmail = await usersCollection.find({
             "firstmail_transactions": { $exists: true }
@@ -1492,9 +1708,11 @@ async function sendMyPurchasesMenu(chatId) {
     const hasFirstmail = user && user.firstmails && user.firstmails.length > 0;
     const hasUsaMail = user && user.usa_mails && user.usa_mails.length > 0;
     const hasUkrMail = user && user.ukr_mails && user.ukr_mails.length > 0;
+    const hasGmailKey = user && user.gmail_keys && user.gmail_keys.length > 0;
 
     const buttons = [];
     if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
+    if (hasGmailKey) buttons.push([{ text: '🇺🇸 Мои GMAIL KEY 🇺🇸', callback_data: 'my_gmail_keys' }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
     if (!hasIcloud && !hasFirstmail && !hasUsaMail && !hasUkrMail) {
@@ -1569,6 +1787,33 @@ async function sendMyFirstmailsMenu(chatId) {
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
     return bot.sendMessage(chatId, '🔥 <b>Ваши FIRSTMAIL почты:</b> 🔥', {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
+}
+
+async function sendMyGmailKeysMenu(chatId) {
+    const usersCollection = await users();
+    const user = await usersCollection.findOne({ user_id: chatId });
+
+    if (!user || !user.gmail_keys || user.gmail_keys.length === 0) {
+        return bot.sendMessage(chatId,
+            '❌ У вас пока нет купленных аккаунтов GMAIL KEY.\nКупите их в разделе USA GMAIL KEY!', {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
+                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                    ]
+                }
+            });
+    }
+
+    const buttons = user.gmail_keys.map(acc => [{ text: acc.split('|')[0], callback_data: `gmail_key_show_${acc}` }]);
+    buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
+
+    return bot.sendMessage(chatId, '🇺🇸 <b>Ваши GMAIL KEY аккаунты:</b> 🇺🇸', {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: buttons
@@ -1730,6 +1975,11 @@ if (data === 'tg_pasing_info') {
             return sendEmailsMenu(chatId);
         }
 
+        if (data === 'gmail_key_category') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendGmailKeyMenu(chatId);
+        }
+
         // Категория FIRSTMAIL
         if (data === 'firstmail_category') {
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
@@ -1810,6 +2060,18 @@ if (data === 'tg_pasing_info') {
             return sendUsaMailQuantityMenu(chatId);
         }
 
+        if (data === 'buy_gmail_key') {
+            const gmailKeyCount = await (await gmailKeys()).countDocuments();
+            if (gmailKeyCount === 0) {
+                return bot.answerCallbackQuery(callbackQuery.id, {
+                    text: 'GMAIL KEY аккаунты временно закончились. Попробуйте позже.',
+                    show_alert: true
+                });
+            }
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendGmailKeyQuantityMenu(chatId);
+        }
+
         // Купить ukr mail
         if (data === 'buy_ukr_mail') {
             const ukrMailCount = await (await ukrMails()).countDocuments();
@@ -1837,6 +2099,22 @@ if (data === 'tg_pasing_info') {
 
             await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             await sendPaymentMenu(chatId, invoiceUrl, quantity);
+            return bot.answerCallbackQuery(callbackQuery.id);
+        }
+
+        if (data.startsWith('gmail_key_quantity_')) {
+            const quantity = parseInt(data.split('_')[3]);
+            const invoiceUrl = await createGmailKeyInvoice(chatId, quantity);
+        
+            if (!invoiceUrl) {
+                return bot.answerCallbackQuery(callbackQuery.id, {
+                    text: 'Ошибка при создании платежа. Попробуйте позже.',
+                    show_alert: true
+                });
+            }
+        
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            await sendGmailKeyPaymentMenu(chatId, invoiceUrl, quantity);
             return bot.answerCallbackQuery(callbackQuery.id);
         }
 
@@ -1966,6 +2244,27 @@ if (data === 'tg_pasing_info') {
                     reply_markup: {
                         inline_keyboard: [
                             [{ text: '🔙 Назад', callback_data: 'my_firstmails' }]
+                        ]
+                    }
+                }
+            );
+            return;
+        }
+
+        if (data === 'my_gmail_keys') {
+            await bot.deleteMessage(chatId, callbackQuery.message.message_id);
+            return sendMyGmailKeysMenu(chatId);
+        }
+        
+        if (data.startsWith('gmail_key_show_')) {
+            const acc = data.replace('gmail_key_show_', '');
+            await bot.sendMessage(chatId,
+                `🇺🇸 <b>Ваш аккаунт USA GMAIL KEY:</b>\n<code>${acc}</code>\n\nИспользуйте для ваших целей!`,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '🔙 Назад', callback_data: 'my_gmail_keys' }]
                         ]
                     }
                 }
@@ -2169,6 +2468,32 @@ bot.onText(/\/add_first (.+)/, async (msg, match) => {
     const count = await firstmailsCollection.countDocuments();
     bot.sendMessage(msg.chat.id,
         `✅ Добавлено: ${result.insertedCount}\n🔥 Всего FIRSTMAIL: ${count}`);
+});
+
+// Добавление аккаунтов USA GMAIL KEY 24+H
+bot.onText(/\/add_gmail (.+)/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) return;
+
+    const gmailKeysCollection = await gmailKeys();
+    const newGmailKeys = match[1].split(',').map(e => e.trim()).filter(e => e);
+
+    // Формат: email|логин|пароль|US|KEY
+    const toInsert = newGmailKeys.map(str => {
+        const [email, login, password, country, key] = str.split('|');
+        return {
+            email: (email || '').trim(),
+            login: (login || '').trim(),
+            password: (password || '').trim(),
+            country: (country || '').trim(),
+            key: (key || '').trim(),
+            raw: str.trim()
+        };
+    });
+
+    const result = await gmailKeysCollection.insertMany(toInsert, { ordered: false });
+    const count = await gmailKeysCollection.countDocuments();
+    bot.sendMessage(msg.chat.id,
+        `✅ Добавлено: ${result.insertedCount}\n🇺🇸 Всего USA GMAIL KEY: ${count}`);
 });
 
 // Добавление почт USA FIRSTMAIL
@@ -2378,6 +2703,21 @@ bot.onText(/\/user_stats/, async (msg) => {
 
         await bot.sendMessage(msg.chat.id, userInfo, { parse_mode: 'HTML' });
     }
+});
+
+bot.onText(/\/gmail_status/, async (msg) => {
+    if (!isAdmin(msg.from.id)) return;
+
+    const gmailKeysCollection = await gmailKeys();
+    const count = await gmailKeysCollection.countDocuments();
+    const first50 = await gmailKeysCollection.find().limit(50).toArray();
+
+    let message = `🇺🇸 Всего USA GMAIL KEY: ${count}\n\n`;
+    message += first50.map(e => e.raw).join('\n');
+
+    if (count > 200) message += '\n\n...и другие (показаны первые 200)';
+
+    bot.sendMessage(msg.chat.id, message);
 });
 
 // Рассылка сообщений всем пользователям
