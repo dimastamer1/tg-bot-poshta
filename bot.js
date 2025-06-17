@@ -427,7 +427,7 @@ async function sendCategoriesMenu(chatId) {
                 [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
                 [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
                 [{ text: '🤖 СОФТ TG PASING', callback_data: 'tg_pasing_category' }],
-                [{ text: `♻️ АККАУНТЫ USA GMAIL KEY 24+H (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
+                [{ text: `❗️[NEW]❗️ ПОЧТЫ USA FIRSTMAIL (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
                 [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
                 [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
@@ -534,22 +534,51 @@ async function sendTgPasingInfo(chatId) {
 }
 
 async function sendGmailKeyMenu(chatId) {
-    const gmailKeyCount = await (await gmailKeys()).countDocuments();
+    const text = `
+🔥 <b>🇺🇸 USA FIRSTMAIL LIMITED </b> 🔥
 
-    const text = `🇺🇸 <b>АККАУНТЫ USA GMAIL KEY 24+H (${gmailKeyCount}шт)</b>\n\n` +
-        `<b>В данном меню вы можете:</b>\n` +
-        `✅ • Купить аккаунты GMAIL KEY 24+H для работы и спама\n\n` +
-        `Цена: 11рубей <b>0.143 USDT</b> за 1 аккаунт\n\n` +
-        `Выберите действие:`+
-        `Формат - Почта | Логин | Пароль | Geo | key \n\n` +
-        `<b>КАК ЗАЙТИ В АККАУНТ</b>?` +
-        `✅Скачиваем google auntificator, вставляем ключ который выдаеться в конце аккаунта, и входим, через забыл пароль сьросить его или войти через аунтификатор!`;
+💎 <b>ЭКСКЛЮЗИВНЫЕ ПОЧТЫ:</b>
+✔ Прямая регистрация в США
+✔ Высокий уровень доверия
+✔ Доступны только у избранных продавцов
+
+🚀 <b>ЧЕМ ЛУЧШЕ ОБЫЧНЫХ FIRSTMAIL?</b>
+✅ Меньше теневых банов
+✅ Лучшая проходимость
+✅ Стабильнее работа
+
+💰 <b>ЦЕНА:</b> 8.5 рублей (0.11 USDT) за одну почту
+
+📝 <b>ФОРМАТ:</b>
+Почта | Пароль 
+
+🔧 <b>ИНСТРУКЦИЯ ПО ПРОЛИВУ:</b>
+1️⃣ Удаляем TikTok (если был)
+2️⃣ Сбрасываем GEO и сеть в телефоне
+3️⃣ Скачиваем TikTok заново
+4️⃣ Включаем VPN (USA Chicago)
+5️⃣ Регистрируем аккаунт как обычно
+6️⃣ Лайкаем 2 видео → проверяем в профиле
+7️⃣ Выходим из аккаунта, закрываем TikTok
+8️⃣ Переключаем VPN (снова Chicago)
+9️⃣ Заходим в аккаунт → лайкаем 1 видео → проверяем
+🔟 Закрываем TikTok
+1️⃣1️⃣ Включаем VPN на нужное GEO
+1️⃣2️⃣ Заливаем контент (БЕЗ ТЕГОВ!)
+
+📲 <b>КАК ЗАЙТИ В АККАУНТ:</b>
+1. Установите Google Authenticator
+2. Введите ключ из данных аккаунта
+3. Вход через "Забыл пароль" или аутентификатор
+
+🛒 <b>ВЫБЕРИТЕ ДЕЙСТВИЕ:</b>
+`;
 
     const options = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ АККАУНТ USA GMAIL KEY 💰', callback_data: 'buy_gmail_key' }],
+                [{ text: '💰 КУПИТЬ АККАУНТ USA FIRSTMAIL 💰', callback_data: 'buy_gmail_key' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
@@ -733,9 +762,9 @@ async function sendGmailKeyQuantityMenu(chatId) {
     }
     rows.push([{ text: '🔙 Назад', callback_data: 'gmail_key_category' }]);
 
-    const text = `📦 <b>Выберите количество аккаунтов GMAIL KEY, которое хотите приобрести</b>\n\n` +
+    const text = `📦 <b>Выберите количество почт USA FIRTSMAIL, которое хотите приобрести</b>\n\n` +
         `Доступно: <b>${maxAvailable}</b> аккаунтов\n` +
-        `Цена: <b>0.143 USDT</b> за 1 аккаунт`;
+        `Цена: <b>0.10 USDT</b> за 1 почту`;
 
     const options = {
         parse_mode: 'HTML',
@@ -820,9 +849,9 @@ async function sendFirstmailPaymentMenu(chatId, invoiceUrl, quantity) {
 }
 
 async function sendGmailKeyPaymentMenu(chatId, invoiceUrl, quantity) {
-    const totalAmount = (0.143 * quantity).toFixed(3);
+    const totalAmount = (0.11 * quantity).toFixed(3);
 
-    const text = `💳 <b>Оплата ${quantity} аккаунтов USA GMAIL KEY</b>\n\n` +
+    const text = `💳 <b>Оплата ${quantity} почт USA FIRSTMAIL</b>\n\n` +
         `Сумма: <b>${totalAmount} USDT</b>\n\n` +
         `Нажмите кнопку для оплаты:`;
 
@@ -1034,12 +1063,12 @@ async function createFirstmailInvoice(userId, quantity) {
 async function createGmailKeyInvoice(userId, quantity) {
     try {
         const transactionId = `buy_gmail_key_${userId}_${Date.now()}`;
-        const amount = 0.143 * quantity;
+        const amount = 0.11 * quantity;
 
         const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
             asset: 'USDT',
             amount: amount,
-            description: `Покупка ${quantity} аккаунтов USA GMAIL KEY 24+H`,
+            description: `Покупка ${quantity} почт USA АFIRSTMAIL LIMITED`,
             hidden_message: 'Спасибо за покупку!',
             paid_btn_name: 'openBot',
             paid_btn_url: 'https://t.me/ubtshope_bot',
@@ -1412,7 +1441,7 @@ async function handleSuccessfulGmailKeyPayment(userId, transactionId) {
         );
 
         await bot.sendMessage(userId,
-            `❌ Недостаточно аккаунтов GMAIL KEY в пуле\nОбратитесь в поддержку @igor_Potekov`,
+            `❌ Недостаточно аккаунтов USA FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
             { parse_mode: 'HTML' });
         return false;
     }
@@ -1712,7 +1741,7 @@ async function sendMyPurchasesMenu(chatId) {
 
     const buttons = [];
     if (hasIcloud) buttons.push([{ text: '📧 Мои ICLOUD 📧', callback_data: 'my_iclouds' }]);
-    if (hasGmailKey) buttons.push([{ text: '🇺🇸 Мои GMAIL KEY 🇺🇸', callback_data: 'my_gmail_keys' }]);
+    if (hasGmailKey) buttons.push([{ text: '🇺🇸 Мои USA FIRSTMAIL 🇺🇸', callback_data: 'my_gmail_keys' }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
     if (!hasIcloud && !hasFirstmail && !hasUsaMail && !hasUkrMail) {
@@ -1800,11 +1829,18 @@ async function sendMyGmailKeysMenu(chatId) {
 
     if (!user || !user.gmail_keys || user.gmail_keys.length === 0) {
         return bot.sendMessage(chatId,
-            '❌ У вас пока нет купленных аккаунтов GMAIL KEY.\nКупите их в разделе USA GMAIL KEY!', {
+            `🔍 <b>У вас нет купленных почт</b>\n\n` +
+            `📌 Чтобы получить доступ к эксклюзивным USA FIRSTMAIL аккаунтам:\n` +
+            `➡️ Перейдите в раздел <b>🇺🇸 USA FIRSTMAIL</b>\n` +
+            `💎 Доступны только качественные проверенные аккаунты`, {
+                parse_mode: "HTML",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
-                        [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
+                        [{ text: '🛒 КУПИТЬ USA FIRSTMAIL', callback_data: 'buy_gmail_key' }],
+                        [
+                            { text: '📂 Категории', callback_data: 'categories' },
+                            { text: '🔙 Назад', callback_data: 'back_to_main' }
+                        ]
                     ]
                 }
             });
@@ -1813,7 +1849,7 @@ async function sendMyGmailKeysMenu(chatId) {
     const buttons = user.gmail_keys.map(acc => [{ text: acc.split('|')[0], callback_data: `gmail_key_show_${acc}` }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
-    return bot.sendMessage(chatId, '🇺🇸 <b>Ваши GMAIL KEY аккаунты:</b> 🇺🇸', {
+    return bot.sendMessage(chatId, '🇺🇸 <b>Ваши USA FIRSTMAIL почты:</b> 🇺🇸', {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: buttons
@@ -2064,7 +2100,7 @@ if (data === 'tg_pasing_info') {
             const gmailKeyCount = await (await gmailKeys()).countDocuments();
             if (gmailKeyCount === 0) {
                 return bot.answerCallbackQuery(callbackQuery.id, {
-                    text: 'GMAIL KEY аккаунты временно закончились. Попробуйте позже.',
+                    text: 'USA FIRSTMAIL аккаунты временно закончились. Попробуйте позже.',
                     show_alert: true
                 });
             }
@@ -2259,7 +2295,7 @@ if (data === 'tg_pasing_info') {
         if (data.startsWith('gmail_key_show_')) {
             const acc = data.replace('gmail_key_show_', '');
             await bot.sendMessage(chatId,
-                `🇺🇸 <b>Ваш аккаунт USA GMAIL KEY:</b>\n<code>${acc}</code>\n\nИспользуйте для ваших целей!`,
+                `🇺🇸 <b>Ваши USA FIRSTMAIL:</b>\n<code>${acc}</code>\n\nИспользуйте для ваших целей!`,
                 {
                     parse_mode: 'HTML',
                     reply_markup: {
@@ -2493,7 +2529,7 @@ bot.onText(/\/add_gmail (.+)/, async (msg, match) => {
     const result = await gmailKeysCollection.insertMany(toInsert, { ordered: false });
     const count = await gmailKeysCollection.countDocuments();
     bot.sendMessage(msg.chat.id,
-        `✅ Добавлено: ${result.insertedCount}\n🇺🇸 Всего USA GMAIL KEY: ${count}`);
+        `✅ Добавлено: ${result.insertedCount}\n🇺🇸 Всего USA FIRSTMAIL: ${count}`);
 });
 
 // Добавление почт USA FIRSTMAIL
@@ -2712,7 +2748,7 @@ bot.onText(/\/gmail_status/, async (msg) => {
     const count = await gmailKeysCollection.countDocuments();
     const first50 = await gmailKeysCollection.find().limit(50).toArray();
 
-    let message = `🇺🇸 Всего USA GMAIL KEY: ${count}\n\n`;
+    let message = `🇺🇸 Всего USA USA FIRSTMAIL: ${count}\n\n`;
     message += first50.map(e => e.raw).join('\n');
 
     if (count > 200) message += '\n\n...и другие (показаны первые 200)';
