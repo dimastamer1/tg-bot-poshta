@@ -427,7 +427,7 @@ async function sendCategoriesMenu(chatId) {
                 [{ text: `📧 ПОЧТЫ ICLOUD (${emailsCount}шт)`, callback_data: 'emails_category' }],
                 [{ text: `🔥 FIRSTMAIL (${firstmailCount}шт)`, callback_data: 'firstmail_category' }],
                 [{ text: '🤖 СОФТ TG PASING', callback_data: 'tg_pasing_category' }],
-                [{ text: `❗️[NEW]❗️ ПОЧТЫ USA FIRSTMAIL (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
+                [{ text: `🇺🇸 ПОЧТЫ USA FIRSTMAIL 🇺🇸 (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
                 [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
                 [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
@@ -566,10 +566,6 @@ async function sendGmailKeyMenu(chatId) {
 1️⃣1️⃣ Включаем VPN на нужное GEO
 1️⃣2️⃣ Заливаем контент (БЕЗ ТЕГОВ!)
 
-📲 <b>КАК ЗАЙТИ В АККАУНТ:</b>
-1. Установите Google Authenticator
-2. Введите ключ из данных аккаунта
-3. Вход через "Забыл пароль" или аутентификатор
 
 🛒 <b>ВЫБЕРИТЕ ДЕЙСТВИЕ:</b>
 `;
@@ -578,7 +574,7 @@ async function sendGmailKeyMenu(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ АККАУНТ USA FIRSTMAIL 💰', callback_data: 'buy_gmail_key' }],
+                [{ text: '💰 КУПИТЬ ПОЧТЫ USA FIRSTMAIL 💰', callback_data: 'buy_gmail_key' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
