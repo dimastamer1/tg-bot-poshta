@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 
 // Инициализация бота
 const bot = new TelegramBot(config.telegramToken, {
-    polling: false // Отключаем polling для вебхука
+    polling: true// Отключаем polling для вебхука
 });
 const CRYPTOBOT_API_TOKEN = config.cryptoBotToken;
 
@@ -2966,16 +2966,8 @@ async function showSelectedMail(chatId, data, mailType) {
 // Запуск сервера и бота
 (async () => {
     try {
-        // Установка вебхука при запуске на Render
-        if (process.env.RENDER_EXTERNAL_URL) {
-            const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/webhook`;
-            await bot.setWebHook(webhookUrl);
-            console.log(`Webhook установлен: ${webhookUrl}`);
-        } else {
-            console.log('Running in development mode');
-        }
+        console.log('Bot работает в режиме polling (DigitalOcean)');
 
-        // Запуск сервера
         app.listen(PORT, () => {
             console.log(`Сервер запущен на порту ${PORT}`);
             console.log('💎 Бот успешно запущен и готов к работе!');
