@@ -18,8 +18,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Инициализация бота
+// Было:
+// const bot = new TelegramBot(config.telegramToken, {
+//     polling: true // ← Конфликт с вебхуком
+// });
+
+// Стало:
 const bot = new TelegramBot(config.telegramToken, {
-    polling: true// Отключаем polling для вебхука
+    polling: {
+        interval: 300, // Опционально: интервал опроса в мс
+        autoStart: true // Автоматически стартовать polling
+    }
 });
 const CRYPTOBOT_API_TOKEN = config.cryptoBotToken;
 
@@ -36,10 +45,16 @@ const imapConfig = {
 // Middleware для обработки JSON
 app.use(express.json());
 
-// Эндпоинт для вебхука
-app.post(`/webhook`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
+// Было:
+// app.post(`/webhook`, (req, res) => {
+//     bot.processUpdate(req.body);
+//     res.sendStatus(200);
+// });
+
+// Стало:
+app.use(express.json());
+app.get('/', (req, res) => {
+    res.send('Бот работает в режиме polling!');
 });
 
 // Health check эндпоинт
@@ -2963,17 +2978,10 @@ async function showSelectedMail(chatId, data, mailType) {
     );
 }
 
-// Запуск сервера и бота
-(async () => {
-    try {
-        console.log('Bot работает в режиме polling (DigitalOcean)');
+// Запуск сервера и бота (только для health-check)
+console.log('Bot работает в режиме polling (DigitalOcean)');
 
-        app.listen(PORT, () => {
-            console.log(`Сервер запущен на порту ${PORT}`);
-            console.log('💎 Бот успешно запущен и готов к работе!');
-        });
-    } catch (err) {
-        console.error('Ошибка при запуске:', err);
-        process.exit(1);
-    }
-})();
+app.listen(PORT, () => {
+    console.log(`Сервер health-check запущен на порту ${PORT}`);
+    console.log('💎 Бот успешно запущен и готов к работе!');
+});
