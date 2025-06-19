@@ -661,7 +661,7 @@ async function sendUkrMailMenu(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ АККАУНТ 48Ч UKR FIRSTMAIL 💰', callback_data: 'buy_ukr_mail' }],
+                [{ text: '💰 КУПИТЬ АККАУНТ 48Ч СРОЧНЫЕ USA FIRSTMAIL 💰', callback_data: 'buy_ukr_mail' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
