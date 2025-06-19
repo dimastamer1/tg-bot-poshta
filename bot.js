@@ -337,7 +337,7 @@ async function sendMainMenu(chatId, deletePrevious = false, msg = null) { // Add
         `• Купить почту по выгодной цене\n` +
         `• Получить код почты TikTok (ТОЛЬКО ICLOUD, и только те, которые куплены у нас)\n` +
         `• Купить почту FIRSTMAIL для спама (выдается как email:password)\n` +
-        `• Купить аккаунты отлега 48+Ч USA/UKR FIRSTMAIL отлега (выдается как email:password:username:passwordacc)\n` +
+        `• Купить аккаунты отлега 48+Ч USA/USA СРОЧНЫЕ FIRSTMAIL отлега (выдается как email:password:username:passwordacc)\n` +
         `• Скоро добавим еще разные почты и аккаунты\n` +
         `⚠️ Бот новый, возможны временные перебои\n\n` +
         `🎉 <b>ЧАСТО СКИДКИ, БОНУСЫ</b> часто связки, инфо поводы😱` + discountText;
@@ -444,7 +444,7 @@ async function sendCategoriesMenu(chatId) {
                 [{ text: '🤖 СОФТ TG PASING', callback_data: 'tg_pasing_category' }],
                 [{ text: `🇺🇸 ПОЧТЫ USA FIRSTMAIL 🇺🇸 (${gmailKeyCount}шт)`, callback_data: 'gmail_key_category' }],
                 [{ text: `🇺🇸 АККАУНТЫ FIRSTMAIL USA 48Ч (${usaMailCount}шт)`, callback_data: 'usa_mail_category' }],
-                [{ text: `🇺🇦 АККАУНТЫ FIRSTMAIL UKR 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
+                [{ text: `🇺🇸 СРОЧНЫЕ FIRSTMAIL USA 48Ч (${ukrMailCount}шт)`, callback_data: 'ukr_mail_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
             ]
         }
@@ -650,10 +650,11 @@ async function sendUsaMailMenu(chatId) {
 async function sendUkrMailMenu(chatId) {
     const ukrMailCount = await (await ukrMails()).countDocuments();
 
-    const text = `🇺🇦 <b>АККАУНТЫ 48Ч ОТЛЕГА FIRSTMAIL UKR (${ukrMailCount}шт)</b>\n\n` +
+    const text = `🇺🇦 <b>АККАУНТЫ 48Ч ОТЛЕГА FIRSTMAIL USA (${ukrMailCount}шт)</b>\n\n` +
         `<b>В данном меню вы можете:</b>\n` +
-        `✅ • Купить АККАУНТЫ 48Ч ОТЛЕГИ UKR FIRSTMAIL отлега для спама\n\n` +
-        `Цена: <b>10 рублей</b> или <b>0.13 USDT</b> за 1 АККАУНТ\n\n` +
+        `✅ • Купить АККАУНТЫ 48Ч ОТЛЕГИ USA FIRSTMAIL отлега для спама\n\n` +
+        `Цена: <b>20 рублей</b> или <b>0.26 USDT</b> за 1 АККАУНТ\n\n` +
+        `‼️ЄТО ТОЧНО ТАКИЕ ЖЕ ОТЛЕГИ КАК И ПО 10 РУБЛЕЙ НО ТУТ ОНИ ЧАСТЧЕ‼️`+
         `Выберите действие:`;
 
     const options = {
@@ -805,9 +806,9 @@ async function sendUkrMailQuantityMenu(chatId) {
     }
     rows.push([{ text: '🔙 Назад', callback_data: 'ukr_mail_category' }]);
 
-    const text = `📦 <b>Выберите количество АККАУНТОВ 48Ч UKR FIRSTMAIL, которое хотите приобрести</b>\n\n` +
+    const text = `📦 <b>Выберите количество АККАУНТОВ 48Ч USA FIRSTMAIL, которое хотите приобрести</b>\n\n` +
         `Доступно: <b>${maxAvailable}</b> почт\n` +
-        `Цена: <b>10 Рублей</b> или <b>0.13 USDT</b> за 1 АККАУНТ`;
+        `Цена: <b>20 Рублей</b> или <b>0.26 USDT</b> за 1 АККАУНТ`;
 
     const options = {
         parse_mode: 'HTML',
@@ -904,9 +905,9 @@ async function sendUsaMailPaymentMenu(chatId, invoiceUrl, quantity) {
 
 // Меню оплаты UKR FIRSTMAIL
 async function sendUkrMailPaymentMenu(chatId, invoiceUrl, quantity) {
-    const totalAmount = (0.132 * quantity).toFixed(2);
+    const totalAmount = (0.26 * quantity).toFixed(2);
 
-    const text = `💳 <b>Оплата ${quantity} АККАУНТ-ОВ UKR FIRSTMAIL</b>\n\n` +
+    const text = `💳 <b>Оплата ${quantity} АККАУНТ-ОВ USA FIRSTMAIL</b>\n\n` +
         `Сумма: <b>${totalAmount} USDT</b>\n\n` +
         `Нажмите кнопку для оплаты:`;
 
@@ -1166,12 +1167,12 @@ async function createUsaMailInvoice(userId, quantity) {
 async function createUkrMailInvoice(userId, quantity) {
     try {
         const transactionId = `buy_ukr_mail_${userId}_${Date.now()}`;
-        const amount = 0.132 * quantity;
+        const amount = 0.26 * quantity;
 
         const response = await axios.post('https://pay.crypt.bot/api/createInvoice', {
             asset: 'USDT',
             amount: amount,
-            description: `Покупка ${quantity} почт UKR FIRSTMAIL`,
+            description: `Покупка ${quantity} почт USA FIRSTMAIL`,
             hidden_message: 'Спасибо за покупку!',
             paid_btn_name: 'openBot',
             paid_btn_url: 'https://t.me/ubtshope_bot',
@@ -1559,7 +1560,7 @@ async function handleSuccessfulUkrMailPayment(userId, transactionId) {
         );
 
         await bot.sendMessage(userId,
-            `❌ Недостаточно почт UKR FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
+            `❌ Недостаточно почт USA FIRSTMAIL в пуле\nОбратитесь в поддержку @igor_Potekov`,
             { parse_mode: 'HTML' });
         return false;
     }
@@ -1582,7 +1583,7 @@ async function handleSuccessfulUkrMailPayment(userId, transactionId) {
     });
 
     await bot.sendMessage(userId,
-        `🎉 Оплата подтверждена!\nВаши почты UKR FIRSTMAIL:\n${ukrMailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
+        `🎉 Оплата подтверждена!\nВаши почты USA FIRSTMAIL 48 СРОЧНЫЕ:\n${ukrMailsToSell.map(e => `${e.email}:${e.password}`).join('\n')}`,
         { parse_mode: 'HTML' });
 
     return true;
@@ -1906,8 +1907,8 @@ async function sendMyUkrMailsMenu(chatId) {
 
     if (!user || !user.ukr_mails || user.ukr_mails.length === 0) {
         return bot.sendMessage(chatId,
-            '❌ У вас пока нет UKR фирстмаилов.\n' +
-            'Купите их в разделе UKR FIRSTMAIL!', {
+            '❌ У вас пока нет USA фирстмаилов.\n' +
+            'Купите их в разделе USA FIRSTMAIL!', {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '📂 КАТЕГОРИИ 📂', callback_data: 'categories' }],
@@ -1920,7 +1921,7 @@ async function sendMyUkrMailsMenu(chatId) {
     const buttons = user.ukr_mails.map(emailpass => [{ text: emailpass, callback_data: `ukr_mail_show_${emailpass}` }]);
     buttons.push([{ text: '🔙 Назад', callback_data: 'back_to_main' }]);
 
-    return bot.sendMessage(chatId, '🇺🇦 <b>Ваши UKR FIRSTMAIL почты:</b> 🇺🇦', {
+    return bot.sendMessage(chatId, '🇺🇦 <b>Ваши USA FIRSTMAIL почты:</b> 🇺🇦', {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: buttons
@@ -2126,7 +2127,7 @@ if (data === 'tg_pasing_info') {
             const ukrMailCount = await (await ukrMails()).countDocuments();
             if (ukrMailCount === 0) {
                 return bot.answerCallbackQuery(callbackQuery.id, {
-                    text: 'UKR FIRSTMAIL почты временно закончились. Попробуйте позже.',
+                    text: 'USA СРОЧНЫЕ FIRSTMAIL почты временно закончились. Попробуйте позже.',
                     show_alert: true
                 });
             }
@@ -2343,7 +2344,7 @@ if (data === 'tg_pasing_info') {
         if (data.startsWith('ukr_mail_show_')) {
             const emailpass = data.replace('ukr_mail_show_', '');
             await bot.sendMessage(chatId,
-                `🇺🇦 <b>Ваша почта UKR FIRSTMAIL:</b> <code>${emailpass}</code>\n\n` +
+                `🇺🇦 <b>Ваша почта USA FIRSTMAIL:</b> <code>${emailpass}</code>\n\n` +
                 `Используйте для ваших целей!`,
                 {
                     parse_mode: 'HTML',
@@ -2585,7 +2586,7 @@ bot.onText(/\/add_ukr (.+)/, async (msg, match) => {
     const result = await ukrMailsCollection.insertMany(toInsert, { ordered: false });
     const count = await ukrMailsCollection.countDocuments();
     bot.sendMessage(msg.chat.id,
-        `✅ Добавлено: ${result.insertedCount}\n🇺🇦 Всего UKR FIRSTMAIL: ${count}`);
+        `✅ Добавлено: ${result.insertedCount}\n🇺🇦 Всего USA FIRSTMAIL: ${count}`);
 });
 
 // Статус пула iCloud
@@ -2644,7 +2645,7 @@ bot.onText(/\/ukr_status/, async (msg) => {
     const count = await ukrMailsCollection.countDocuments();
     const first50 = await ukrMailsCollection.find().limit(50).toArray();
 
-    let message = `🇺🇦 Всего UKR FIRSTMAIL: ${count}\n\n`;
+    let message = `🇺🇦 Всего USA СРОЧНЫЕ FIRSTMAIL: ${count}\n\n`;
     message += first50.map(e => `${e.email}:${e.password}`).join('\n');
 
     if (count > 200) message += '\n\n...и другие (показаны первые 200)';
@@ -2947,7 +2948,7 @@ async function sendMyMailsMenu(chatId, mailType) {
             title = '🇺🇸 Ваши USA FIRSTMAIL почты: 🇺🇸';
             break;
         case 'ukr':
-            title = '🇺🇦 Ваши UKR FIRSTMAIL почты: 🇺🇦';
+            title = '🇺🇦 Ваши USA СРОЧНЫЕ FIRSTMAIL почты: 🇺🇦';
             break;
         default:
             title = 'Ваши почты';
