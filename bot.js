@@ -65,7 +65,7 @@ async function sendMainMenu(chatId, deletePrevious = false, msg = null, messageI
 
     const welcomeText = `👋 <b>Добро пожаловать, вы находитесь в боте, сделанном под UBT для спама TikTok!</b>\n\n` +
         `<b>Тут вы можете:</b>\n` +
-        `• Купить TRUST SPECIAL 24H+ аккаунты\n` +
+        `• Купить USA (F) 0-24Ч аккаунты\n` +
         `⚠️ Бот новый, возможны временные перебои\n\n`
          +`⚠️ ПОЛУЧАТЬ КОДЫ С ПОЧТ С БОТА ТУТ 📤 — @ubtuniccal_bot\n\n` +
         `🎉 <b>ЧАСТО СКИДКИ, БОНУСЫ</b> часто связки, инфо поводы😱`;
@@ -124,7 +124,7 @@ async function sendCategoriesMenu(chatId, messageId = null) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: `⭐️ TRUST NEW SPECIAL 1H+ (G) ⭐️ (${trustSpecialCount}шт)`, callback_data: 'trust_special_category' }],
+                [{ text: `⭐️ USA (F) 0-24Ч ⭐️ (${trustSpecialCount}шт)`, callback_data: 'trust_special_category' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
             ]
         }
@@ -152,9 +152,9 @@ async function sendCategoriesMenu(chatId, messageId = null) {
 async function sendTrustSpecialMenu(chatId) {
     const trustSpecialCount = await (await trustSpecials()).countDocuments();
 
-    const text = `🔥 <b>TRUST SPECIAL 24H+ (${trustSpecialCount}шт)</b>\n\n` +
+    const text = `🔥 <b>USA (F) 0-24Ч (${trustSpecialCount}шт)</b>\n\n` +
         `<b>В данном меню вы можете:</b>\n` +
-        `✅ • Купить TRUST SPECIAL 1H+ аккаунты\n\n` +
+        `✅ • Купить USA (F) 0-24Ч  аккаунты\n\n` +
         `Цена: <b>10 рублей</b> или <b>0.12 USDT</b> за 1 аккаунт\n\n` +
         `Выберите действие:`;
 
@@ -162,7 +162,7 @@ async function sendTrustSpecialMenu(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '💰 КУПИТЬ TRUST SPECIAL 💰', callback_data: 'buy_trust_special' }],
+                [{ text: '💰 КУПИТЬ USA (F) 0-24Ч 💰', callback_data: 'buy_trust_special' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_categories' }]
             ]
         }
@@ -187,7 +187,7 @@ async function sendTrustSpecialQuantityMenu(chatId) {
     }
     rows.push([{ text: '🔙 Назад', callback_data: 'trust_special_category' }]);
 
-    const text = `📦 <b>Выберите количество TRUST SPECIAL аккаунтов, которое хотите приобрести</b>\n\n` +
+    const text = `📦 <b>Выберите количество USA (F) 0-24Ч аккаунтов, которое хотите приобрести</b>\n\n` +
         `Доступно: <b>${maxAvailable}</b> аккаунтов\n` +
         `Цена: <b>10 Рублей</b> или <b>0.12 USDT</b> за 1 аккаунт`;
 
@@ -366,7 +366,7 @@ async function sendMyPurchasesMenu(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '🔥 Мои TRUST SPECIAL 🔥', callback_data: 'my_trust_specials' }],
+                [{ text: '🔥 Мои USA (F) 0-24Ч 🔥', callback_data: 'my_trust_specials' }],
                 [{ text: '🔙 Назад', callback_data: 'back_to_main' }]
             ]
         }
